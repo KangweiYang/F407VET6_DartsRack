@@ -1,0 +1,8 @@
+add_subdirectory(MOTOR)
+add_subdirectory(ADC_DMA)
+add_subdirectory(INC_PI)
+add_subdirectory(LED)
+add_subdirectory(OLED)
+add_subdirectory(GREYSCALE)
+add_subdirectory(SW)
+add_subdirectory(FIND_FORWARD_DIR)

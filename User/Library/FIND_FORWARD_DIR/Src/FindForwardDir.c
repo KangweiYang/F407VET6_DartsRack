@@ -132,7 +132,7 @@ uint32_t BinToDec(uint8_t bin) {
     */
 void ResetTimeToResetDelaySensors(uint8_t bin) {
     while (bin) {
-        restTimeToResetDelaySensors[whichBitIs1(FindLowestBit(bin))] = RESET_DELAY_TIME;//-1-1-1-1-1-1-1-1-1!!!!!!!!!!
+//        restTimeToResetDelaySensors[whichBitIs1(FindLowestBit(bin))] = RESET_DELAY_TIME;//-1-1-1-1-1-1-1-1-1!!!!!!!!!!
         bin &= (bin - 1);
     }
 }
@@ -199,28 +199,28 @@ uint8_t FindForwardDir(uint16_t sensors) {
 //        }
 //        }
 
-    if ((sensors & 0b0000001) && (sensors & 0b0000010) && (sensors & 0b0000100) && (sensors & 0b0001000)) {
-        if (pos[0] > POS_ALMOST_FINISH) {
-            finishSign = 1;
-            return 0b0;
-        } else if ((pos[0] > POS_EXIT_CIRCLE_2) &&
-                   (pos[0] < POS_ALMOST_FINISH)) {
-            exitYDelay = EXIT_Y_DELAY_TIME;
-            lastSensors = 0b0000001;
-            return lastSensors;
-        } else {
-            return 0b0001000;
-        }
-    } else if ((sensors & 0b0000010) && (sensors & 0b0000100) && (pos[0] > POS_EXIT_CIRCLE_2) &&
-               (pos[0] < POS_ALMOST_FINISH)) {
-        exitYDelay = EXIT_Y_DELAY_TIME;
-        lastSensors = 0b0000001;
-        return lastSensors;
-    }
-    if (exitYDelay > 0) {
-        lastSensors = 0b0000001;
-        return lastSensors;
-    }
+//    if ((sensors & 0b0000001) && (sensors & 0b0000010) && (sensors & 0b0000100) && (sensors & 0b0001000)) {
+//        if (pos[0] > POS_ALMOST_FINISH) {
+//            finishSign = 1;
+//            return 0b0;
+//        } else if ((pos[0] > POS_EXIT_CIRCLE_2) &&
+//                   (pos[0] < POS_ALMOST_FINISH)) {
+//            exitYDelay = EXIT_Y_DELAY_TIME;
+//            lastSensors = 0b0000001;
+//            return lastSensors;
+//        } else {
+//            return 0b0001000;
+//        }
+//    } else if ((sensors & 0b0000010) && (sensors & 0b0000100) && (pos[0] > POS_EXIT_CIRCLE_2) &&
+//               (pos[0] < POS_ALMOST_FINISH)) {
+//        exitYDelay = EXIT_Y_DELAY_TIME;
+//        lastSensors = 0b0000001;
+//        return lastSensors;
+//    }
+//    if (exitYDelay > 0) {
+//        lastSensors = 0b0000001;
+//        return lastSensors;
+//    }
 
     return sensors;
 }
@@ -301,31 +301,31 @@ void MotorControl(int sensors) {
 //    } else {
 //        OpenCir(0, 0);
 //    }
-    if (finishSign == 1) {
-        OpenCir(0, 0);
-        return;
-    }
-    if (pos[0] < POS_ROUND_2) {
-        if (dir & 0b11000000) OpenCir(GENERAL_SPEED * XXX_SPEED, GENERAL_SPEED * (2 - XXX_SPEED));
-        else if (dir & 0b0100000) OpenCir(GENERAL_SPEED * XX_SPEED, GENERAL_SPEED * (2 - XX_SPEED));
-        else if (dir & 0b0010000) OpenCir(GENERAL_SPEED * X_SPEED, GENERAL_SPEED * (2 - X_SPEED));
-        else if (dir & 0b0000001) OpenCir(GENERAL_SPEED * (2 - XXX_SPEED), GENERAL_SPEED * XXX_SPEED);
-        else if (dir & 0b0000010) OpenCir(GENERAL_SPEED * (2 - XX_SPEED), GENERAL_SPEED * XX_SPEED);
-        else if (dir & 0b0000100) OpenCir(GENERAL_SPEED * (2 - X_SPEED), GENERAL_SPEED * X_SPEED);
-        else if (dir & 0b0001000) OpenCir(GENERAL_SPEED, GENERAL_SPEED);
-        else OpenCir(0, 0);
-    } else if (pos[0] > POS_ROUND_2) {
-        if (dir & 0b0000001) OpenCir(GENERAL_SPEED * (2 - XXX_SPEED), GENERAL_SPEED * XXX_SPEED);
-        else if (dir & 0b0000010) OpenCir(GENERAL_SPEED * (2 - XX_SPEED), GENERAL_SPEED * XX_SPEED);
-        else if (dir & 0b0000100) OpenCir(GENERAL_SPEED * (2 - X_SPEED), GENERAL_SPEED * X_SPEED);
-        else if (dir & 0b11000000) OpenCir(GENERAL_SPEED * XXX_SPEED, GENERAL_SPEED * (2 - XXX_SPEED));
-        else if (dir & 0b0100000) OpenCir(GENERAL_SPEED * XX_SPEED, GENERAL_SPEED * (2 - XX_SPEED));
-        else if (dir & 0b0010000) OpenCir(GENERAL_SPEED * X_SPEED, GENERAL_SPEED * (2 - X_SPEED));
-        else if (dir & 0b0001000) OpenCir(GENERAL_SPEED, GENERAL_SPEED);
-        else OpenCir(0, 0);
-    } else {
-        OpenCir(0, 0);
-    }
+//    if (finishSign == 1) {
+//        OpenCir(0, 0);
+//        return;
+//    }
+//    if (pos[0] < POS_ROUND_2) {
+//        if (dir & 0b11000000) OpenCir(GENERAL_SPEED * XXX_SPEED, GENERAL_SPEED * (2 - XXX_SPEED));
+//        else if (dir & 0b0100000) OpenCir(GENERAL_SPEED * XX_SPEED, GENERAL_SPEED * (2 - XX_SPEED));
+//        else if (dir & 0b0010000) OpenCir(GENERAL_SPEED * X_SPEED, GENERAL_SPEED * (2 - X_SPEED));
+//        else if (dir & 0b0000001) OpenCir(GENERAL_SPEED * (2 - XXX_SPEED), GENERAL_SPEED * XXX_SPEED);
+//        else if (dir & 0b0000010) OpenCir(GENERAL_SPEED * (2 - XX_SPEED), GENERAL_SPEED * XX_SPEED);
+//        else if (dir & 0b0000100) OpenCir(GENERAL_SPEED * (2 - X_SPEED), GENERAL_SPEED * X_SPEED);
+//        else if (dir & 0b0001000) OpenCir(GENERAL_SPEED, GENERAL_SPEED);
+//        else OpenCir(0, 0);
+//    } else if (pos[0] > POS_ROUND_2) {
+//        if (dir & 0b0000001) OpenCir(GENERAL_SPEED * (2 - XXX_SPEED), GENERAL_SPEED * XXX_SPEED);
+//        else if (dir & 0b0000010) OpenCir(GENERAL_SPEED * (2 - XX_SPEED), GENERAL_SPEED * XX_SPEED);
+//        else if (dir & 0b0000100) OpenCir(GENERAL_SPEED * (2 - X_SPEED), GENERAL_SPEED * X_SPEED);
+//        else if (dir & 0b11000000) OpenCir(GENERAL_SPEED * XXX_SPEED, GENERAL_SPEED * (2 - XXX_SPEED));
+//        else if (dir & 0b0100000) OpenCir(GENERAL_SPEED * XX_SPEED, GENERAL_SPEED * (2 - XX_SPEED));
+//        else if (dir & 0b0010000) OpenCir(GENERAL_SPEED * X_SPEED, GENERAL_SPEED * (2 - X_SPEED));
+//        else if (dir & 0b0001000) OpenCir(GENERAL_SPEED, GENERAL_SPEED);
+//        else OpenCir(0, 0);
+//    } else {
+//        OpenCir(0, 0);
+//    }
 }
 
 /**

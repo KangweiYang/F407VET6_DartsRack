@@ -9,7 +9,7 @@ target_sources(oled
 
 target_include_directories(oled
         INTERFACE
-        .
+        ./Inc
         )
 
 target_link_libraries(motor

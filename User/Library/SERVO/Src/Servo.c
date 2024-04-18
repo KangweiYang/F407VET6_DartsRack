@@ -10,8 +10,27 @@
 
 #define SERVO_UP_DOWN   1
 #define SERVO_GRASP     2
-#define DART_STOP_SW_PORT   SW1_GPIO_Port
-#define DART_STOP_SW_PIN    SW1_Pin
+
+extern double targetVel[4];
+
+void DartLoad1(uint16_t delayTime){
+    targetVel[1] = 3000;
+    targetVel[3] = 3000;
+//    HAL_Delay(delayTime); //3700
+    while(((HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin) == HALL_DETECTED) ||
+           HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin) == HALL_DETECTED) &&
+          (targetVel[1] != 0 || targetVel[3] != 0)){
+
+        if(HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin) != HALL_DETECTED)   targetVel[3] = 0;
+
+        if(HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin) != HALL_DETECTED) targetVel[1] = 0;
+    }
+    targetVel[1] = 3000;
+    targetVel[3] = 3000;
+    HAL_Delay(delayTime);
+    targetVel[1] = 0;
+    targetVel[3] = 0;
+}
 
 void ServoInit(void) {
     HAL_TIM_PWM_Init(&htim2);
@@ -45,26 +64,28 @@ void ServoSet(int channel, int angle, int delay) {
 
 void ServoGraspDart(void) {
 //    ServoSet(SERVO_UP_DOWN, 65, 200);
-    ServoSet(SERVO_UP_DOWN, 18, 0);                         //STOP up
+    ServoSet(SERVO_UP_DOWN, 20, 0);                         //STOP up
 
-    StepperStart(STEPPER1);
+    StepperStart(STEPPER3);
     uint16_t freq = 50, cont = 0;
-    while (HAL_GPIO_ReadPin(DART_STOP_SW_PORT, DART_STOP_SW_PIN) == GPIO_PIN_RESET){
-        if(freq < 1000) {
+    StepperStart(STEPPER3);
+    while (HAL_GPIO_ReadPin(DART_STOP_SW_GPIO_Port, DART_STOP_SW_Pin) == GPIO_PIN_SET){
+        if(freq < 850) {
 //            cont++;
 //            if (cont == 1) {
 //                cont = 0;
-                freq++;
+                freq += 10;
+
 //            }
-            StepperSetSpeed(STEPPER1, freq);
+            StepperSetSpeed(STEPPER3, freq);
         }
-        printf("freq= %d\n", freq);
+//        printf("freq= %d\n", freq);
     }
-    if (HAL_GPIO_ReadPin(DART_STOP_SW_PORT, DART_STOP_SW_PIN) == GPIO_PIN_SET) {
-        StepperStop(STEPPER1);
-        ServoSet(SERVO_GRASP, 99, 300);                         //Grasp
-        ServoSet(SERVO_UP_DOWN, 102, 2900);                      //Start down
-        ServoSet(SERVO_GRASP, 109, 500);                        //Release
+    if (HAL_GPIO_ReadPin(DART_STOP_SW_GPIO_Port, DART_STOP_SW_Pin) == GPIO_PIN_RESET) {
+        StepperStop(STEPPER3);
+        ServoSet(SERVO_GRASP, 97, 300);                         //Grasp
+        ServoSet(SERVO_UP_DOWN, 102, 1500);                      //Start down
+        ServoSet(SERVO_GRASP, 119, 2000);                        //Release
         ServoSet(SERVO_UP_DOWN, 18, 2500);                      //Start up
 
     }

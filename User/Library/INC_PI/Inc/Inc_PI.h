@@ -5,14 +5,10 @@
 #ifndef INC_PI_H
 #define INC_PI_H
 
-#include "main.h"
+#include "can.h"
 
 void IncPI_Init(void);
 
-void PrintPIinfo(void);
-
-void SetTargetVel(int channel, int64_t newTargetVel);
-
-void IncrementalPI(int channel);
+void IncrementalPI(int channel, double velKp, double velKi, double Velocity, double TargetVel);
 
 #endif //INC_PI_H

@@ -4,7 +4,6 @@
 
 #include "../Inc/UserOLED.h"
 #include "../Inc/OLED.h"
-#include "../../FIND_FORWARD_DIR/Inc/FindForwardDir.h"
 #include "main.h"
 
 #define UartTemp    0
@@ -38,13 +37,11 @@ void Print(uint16_t valueSerial) {
             OLED_ShowString(0, UartTemp, "sr            ", 12, 0);
             printSign[UartTemp] = 1;
         }
-        OLED_ShowNum(20, UartTemp, (unsigned int) BinToDec(forwardDir), 7, 12, 0);
     } else if (valueSerial == DelaySensors) {
         if (printSign[DelaySensors] == 0) {
             OLED_ShowString(0, DelaySensors, "dS          ", 12, 0);
             printSign[DelaySensors] = 1;
         }
-        OLED_ShowNum(20, DelaySensors, (unsigned int) BinToDec(delaySensors), 7, 12, 0);
     } else if (valueSerial == RestTimeToResetDelaySensors) {
         if (printSign[RestTimeToResetDelaySensors] == 0) {
             OLED_ShowString(0, RestTimeToResetDelaySensors, "rT          ", 12, 0);
@@ -62,13 +59,11 @@ void Print(uint16_t valueSerial) {
             OLED_ShowString(0, FullSensorsTimes, "fT          ", 15, 0);
             printSign[FullSensorsTimes] = 1;
         }
-        OLED_ShowNum(20, FullSensorsTimes, (unsigned int) BinToDec(fullSensorsTimes), 14, 12, 0);
     } else if (valueSerial == LastSensors) {
         if (printSign[LastSensors] == 0) {
             OLED_ShowString(0, LastSensors, "lS          ", 12, 0);
             printSign[LastSensors] = 1;
         }
-        OLED_ShowNum(20, LastSensors, (unsigned int) BinToDec(lastSensors), 7, 12, 0);
     } else if (valueSerial == DiffSensorCount) {
         if (printSign[DiffSensorCount] == 0) {
             OLED_ShowString(0, DiffSensorCount, "dC          ", 12, 0);
@@ -93,6 +88,5 @@ void Print(uint16_t valueSerial) {
             OLED_ShowString(0, Dir, "dir          ", 12, 0);
             printSign[Dir] = 1;
         }
-        OLED_ShowNum(20, Dir, (unsigned int) BinToDec(FindForwardDir(UartTemp)), 7, 12, 0);
     }
 }

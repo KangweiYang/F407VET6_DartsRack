@@ -7,7 +7,7 @@ target_sources(adc_dma
 
 target_include_directories(adc_dma
         INTERFACE
-        ./Inc/Inc
+        ./Inc
         )
 
 target_link_libraries(adc_dma

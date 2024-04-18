@@ -51,7 +51,7 @@ void OLED_Init(void)
  */
 void OLED_WR_CMD(uint8_t cmd)
 {
-    HAL_I2C_Mem_Write(&hi2c2 ,0x78,0x00,I2C_MEMADD_SIZE_8BIT,&cmd,1,0x100);
+    HAL_I2C_Mem_Write(&hi2c1 ,0x78,0x00,I2C_MEMADD_SIZE_8BIT,&cmd,1,0x100);
 }
 
 /**
@@ -62,7 +62,7 @@ void OLED_WR_CMD(uint8_t cmd)
  */
 void OLED_WR_DATA(uint8_t data)
 {
-    HAL_I2C_Mem_Write(&hi2c2 ,0x78,0x40,I2C_MEMADD_SIZE_8BIT,&data,1,0x100);
+    HAL_I2C_Mem_Write(&hi2c1 ,0x78,0x40,I2C_MEMADD_SIZE_8BIT,&data,1,0x100);
 }
 
 /**

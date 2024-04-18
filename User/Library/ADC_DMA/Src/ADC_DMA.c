@@ -8,57 +8,29 @@
 #include "../../MOTOR/Inc/MotorUnit.h"
 
 
-static uint16_t MotorCount_Data[MOTORCOUNT_NUM * 10];                                          //MotorCount Data
-static uint16_t MotorCount_Value[MOTORCOUNT_NUM];                                          //MotorCount ture value
-static uint16_t MotorCount_LastValue[MOTORCOUNT_NUM];                                          //MotorCount last value
-static uint16_t MotorCount_LastLastValue[MOTORCOUNT_NUM];                                          //MotorCount last last value
-static uint16_t MotorCount_Sum[MOTORCOUNT_NUM];                                          //MotorCount sum value
-extern int64_t pos[MOTOR_NUM];
-static uint32_t lastTrik = 0;
-static uint32_t trik = 0;
+extern uint16_t ADC1Value[100];
+extern uint32_t adc1in4, adc1in5, adc1in14, adc1in15;
 
-/**
-    * @breif    MotorCount DMA Init
-    * @note     None
-    * @param    MotorCount channel
-    * @retval   MotorCount ture value
-    *           or error code: -1
-    */
-void IT_Init(void) {
-    HAL_TIM_Base_Start_IT(&htim2);
-}
-
-uint16_t IT_GetMotorCountof(int channel) {
-//    if(channel < 0 || channel > MOTORCOUNT_NUM)                                         //channel exceed the normal region
-//        Error_Handler();
-//    uint16_t MotorCount_Value[MOTORCOUNT_NUM];
-//    MotorCount_Value[channel] = 0;
-//    for (int i = 0; i < MOTORCOUNT_NUM * 10; ++i){
-//        if(i % MOTORCOUNT_NUM == channel)
-//            MotorCount_Value[channel] += MotorCount_Data[i];
-//    }
-//    MotorCount_Value[channel] = (MotorCount_Value[channel] + 5 ) / 10;                       //round off
-    if(channel < 0 || channel >= MOTORCOUNT_NUM) Error_Handler();
-    return MotorCount_Value[channel];
-}
-
-/**
-    * @breif    Get velocity
-    * @note     None
-    * @param    channel
-    * @retval   The velocity of motor[channel].
-    */
-int16_t Get_VelOf(int channel){
-    if(channel < 0 || channel >= MOTOR_NUM) Error_Handler();
-    static int64_t lastPos[2];
-    int64_t temp = lastPos[channel];
-    lastPos[channel] = pos[channel];
-//    lastTrik = trik;
-//    trik = HAL_GetTick();
-//    printf("\n \n %lld, %lld, %lld\n \n", trik - lastTrik, trik >> 20, lastTrik >> 20);
-    return pos[channel] - temp;
-}
-
-uint16_t IT_GetMotorCountofRawData(int num) {
-    return MotorCount_Data[num];
+void ADC_DMA_Renew() {
+        int i, tempAdc1in4 = 0, tempAdc1in5 = 0, tempAdc1in14 = 0, tempAdc1in15 = 0;
+        for (i = 0, tempAdc1in4 = 0, tempAdc1in5 = 0, tempAdc1in14 = 0, tempAdc1in15 = 0; i < 100;) {
+            tempAdc1in4 += ADC1Value[i++];
+            tempAdc1in5 += ADC1Value[i++];
+            tempAdc1in14 += ADC1Value[i++];
+            tempAdc1in15 += ADC1Value[i++];
+        }
+    adc1in4 = tempAdc1in4 / 25;
+    adc1in5 = tempAdc1in5 / 25;
+    adc1in14 = tempAdc1in14 / 25;
+    adc1in15 = tempAdc1in15 / 25;
+#if ADC_DMA_INFO
+    printf("\r\n********ADC-DMA-Example********\r\n");
+    printf("[\tmain]info:AD4_value=%1.3fV\r\n", adc1in4 * 3.3f / 4096);
+    printf("[\tmain]info:AD5_value=%1.3fV\r\n", adc1in5 * 3.3f / 4096);
+    printf("[\tmain]info:AD14_value=%1.3fV\r\n", adc1in14 * 3.3f / 4096);
+    printf("[\tmain]info:AD15_value=%1.3fV\r\n", adc1in15 * 3.3f / 4096);
+    for (int i = 0; i < 100; i += 4) {
+        printf("%d, %d, %d, %d\r\n", ADC1Value[i], ADC1Value[i + 1], ADC1Value[i + 2], ADC1Value[i + 3]);
+    }
+#endif
 }

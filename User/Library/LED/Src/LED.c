@@ -16,9 +16,9 @@
     * @retval   None
     */
 void TurnOnLED(char whichLED){
-    if(whichLED & 0b001) HAL_GPIO_WritePin(BLUE_LED_PORT, BLUE_LED_PIN, LED_ON);
-    if(whichLED & 0b010) HAL_GPIO_WritePin(GREEN_LED_PORT, GREEN_LED_PIN, LED_ON);
-    if(whichLED & 0b100) HAL_GPIO_WritePin(RED_LED_PORT, RED_LED_PIN, LED_ON);
+//    if(whichLED & 0b001) HAL_GPIO_WritePin(BLUE_LED_PORT, BLUE_LED_PIN, LED_ON);
+//    if(whichLED & 0b010) HAL_GPIO_WritePin(GREEN_LED_PORT, GREEN_LED_PIN, LED_ON);
+//    if(whichLED & 0b100) HAL_GPIO_WritePin(RED_LED_PORT, RED_LED_PIN, LED_ON);
 }
 
 /**
@@ -29,7 +29,7 @@ void TurnOnLED(char whichLED){
     * @retval   None
     */
 void TurnOffLED(char whichLED){
-    if(whichLED & 0b001) HAL_GPIO_WritePin(BLUE_LED_PORT, BLUE_LED_PIN, LED_OFF);
-    if(whichLED & 0b010) HAL_GPIO_WritePin(GREEN_LED_PORT, GREEN_LED_PIN, LED_OFF);
-    if(whichLED & 0b100) HAL_GPIO_WritePin(RED_LED_PORT, RED_LED_PIN, LED_OFF);
+//    if(whichLED & 0b001) HAL_GPIO_WritePin(BLUE_LED_PORT, BLUE_LED_PIN, LED_OFF);
+//    if(whichLED & 0b010) HAL_GPIO_WritePin(GREEN_LED_PORT, GREEN_LED_PIN, LED_OFF);
+//    if(whichLED & 0b100) HAL_GPIO_WritePin(RED_LED_PORT, RED_LED_PIN, LED_OFF);
 }

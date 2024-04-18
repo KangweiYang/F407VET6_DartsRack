@@ -13,5 +13,5 @@ target_include_directories(inc_pi
 target_link_libraries(inc_pi
         PRIVATE
             hal
-            adc_dma
+            motor
         )

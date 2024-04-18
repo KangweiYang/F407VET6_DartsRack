@@ -1,4 +1,4 @@
-add_executable(${PROJECT_NAME}.elf ${LINKER_SCRIPT} Library/SERVO/Src/Servo.c Library/SERVO/Inc/Servo.h Library/STEPPER/Src/Stepper.c Library/STEPPER/Inc/Stepper.h)
+add_executable(${PROJECT_NAME}.elf ${LINKER_SCRIPT} Library/DOU_PID/Inc/Double_PID.h Library/DOU_PID/Src/Double_PID.c Library/INC_PI/Inc/Inc_PI.h Library/INC_PI/Src/Inc_PI.c Library/MOTOR/Inc/MotorUnit.h Library/MOTOR/Src/MotorUnit.c Library/SERVO/Src/Servo.c Library/SERVO/Inc/Servo.h Library/STEPPER/Src/Stepper.c Library/STEPPER/Inc/Stepper.h Library/CAN/Src/Can.c Library/CAN/Inc/Can.h Library/RS485/Src/RS485.c Library/RS485/Inc/RS485.h)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Library/MOTOR/Inc)
 add_subdirectory(Library)
 add_subdirectory(Application)
@@ -10,6 +10,12 @@ target_sources(${PROJECT_NAME}.elf
 target_link_libraries(${PROJECT_NAME}.elf
         PRIVATE
         hal
+        can
+        adc_dma
+        dou_pid
+        motor
+        servo
+        stepper
         )
 
 set(HEX_FILE ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.hex)

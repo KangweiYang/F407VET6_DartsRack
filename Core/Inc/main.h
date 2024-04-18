@@ -58,26 +58,66 @@ void SystemClock_Config(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define SW3_Pin GPIO_PIN_13
-#define SW3_GPIO_Port GPIOD
-#define SW2_Pin GPIO_PIN_15
-#define SW2_GPIO_Port GPIOD
-#define SW0_Pin GPIO_PIN_6
-#define SW0_GPIO_Port GPIOC
-#define SW1_Pin GPIO_PIN_7
-#define SW1_GPIO_Port GPIOC
-#define SW20_Pin GPIO_PIN_8
-#define SW20_GPIO_Port GPIOC
+#define RS485_1_RX_TX_CONTROL_Pin GPIO_PIN_6
+#define RS485_1_RX_TX_CONTROL_GPIO_Port GPIOE
+#define STEPPER1_DIR_Pin GPIO_PIN_0
+#define STEPPER1_DIR_GPIO_Port GPIOC
+#define STEPPER2_DIR_Pin GPIO_PIN_1
+#define STEPPER2_DIR_GPIO_Port GPIOC
+#define STEPPER3_DIR_Pin GPIO_PIN_2
+#define STEPPER3_DIR_GPIO_Port GPIOC
+#define STEPPER4_DIR_Pin GPIO_PIN_3
+#define STEPPER4_DIR_GPIO_Port GPIOC
+#define RS485_2_RX_TX_CONTROL_Pin GPIO_PIN_15
+#define RS485_2_RX_TX_CONTROL_GPIO_Port GPIOE
+#define DART_STOP_SW_Pin GPIO_PIN_14
+#define DART_STOP_SW_GPIO_Port GPIOB
+#define HALL_BACK_SW_Pin GPIO_PIN_15
+#define HALL_BACK_SW_GPIO_Port GPIOD
+#define HALL_RIGHT_SW_Pin GPIO_PIN_6
+#define HALL_RIGHT_SW_GPIO_Port GPIOC
+#define HALL_LEFT_SW_Pin GPIO_PIN_7
+#define HALL_LEFT_SW_GPIO_Port GPIOC
 #define SW10_Pin GPIO_PIN_9
 #define SW10_GPIO_Port GPIOC
-#define CAN0_RX_Pin GPIO_PIN_0
-#define CAN0_RX_GPIO_Port GPIOD
-#define CAN1_TX_Pin GPIO_PIN_1
-#define CAN1_TX_GPIO_Port GPIOD
+#define LED1_Pin GPIO_PIN_10
+#define LED1_GPIO_Port GPIOC
+#define LED2_Pin GPIO_PIN_11
+#define LED2_GPIO_Port GPIOC
+#define LED3_Pin GPIO_PIN_12
+#define LED3_GPIO_Port GPIOC
 
 /* USER CODE BEGIN Private defines */
 //stepper
-#define STEPPER1    &htim1, TIM_CHANNEL_1
+#define STEPPER1    &htim1, TIM_CHANNEL_1   //PA8
+#define STEPPER2    &htim3, TIM_CHANNEL_1   //PA6
+#define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
+#define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
+#define MOTOR_NUM  5
+
+#define USE_CAN1    1
+#define USE_CAN2    0
+
+#define HALL_DETECTED   GPIO_PIN_RESET
+
+//print define
+#define ADC_DMA_INFO    0
+
+//stepper1,2 dir
+#define STEPPER_INFO    0
+
+#define STEPPER1_2_DIR  1
+
+#define STEPPER1_2_Kp   40 * (tension1 - targetTen[0])
+
+//rs485
+#define HRS485_1_USART  &huart2
+#define HRS485_2_USART  &huart3
+
+#define RS485_INFO  0
+
+#define TENSION1_DATA_ADDRESS    4
+#define TENSION2_DATA_ADDRESS    3
 
 /* USER CODE END Private defines */
 

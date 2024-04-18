@@ -7,12 +7,6 @@
 
 #include "main.h"
 
-void IT_Init(void);
-
-uint16_t ADC_DMA_GetADCof(int Channel);
-
-int16_t Get_VelOf(int channel);
-
-uint16_t IT_GetADCofRawData(int num);
+void ADC_DMA_Renew();
 
 #endif //ADC_DMA_H

@@ -1,16 +1,16 @@
-add_library(stepper STATIC)
+add_library(can STATIC)
 
-target_sources(stepper
+target_sources(can
         PRIVATE
-        Src/Stepper.c
+        Src/Can.c
         )
 
-target_include_directories(stepper
+target_include_directories(can
         INTERFACE
             ${CMAKE_CURRENT_SOURCE_DIR}/Inc
         )
 
-target_link_libraries(stepper
+target_link_libraries(can
         PRIVATE
             hal
         )

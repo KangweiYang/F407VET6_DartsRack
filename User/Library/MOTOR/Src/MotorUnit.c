@@ -3,22 +3,19 @@
 //
 
 #include "main.h"
-//#include "adc.h"
-#include "tim.h"
 #include "usart.h"
-//#include "gpio.h"
-//#include "dma.h"
-#include "../../ADC_DMA/Inc/ADC_DMA.h"
+#include "gpio.h"
+#include "can.h"
+#include "tim.h"
 #include "../../INC_PI/Inc/Inc_PI.h"
+#include "../../STEPPER/Inc/Stepper.h"
 
-#define ALL_DIR 1
-
+#define FORGET  1
 #define ADC_BUFF_SIZE    10                      //ADC buff size
 
 #define MOTOR_POSI  TIM_CHANNEL_1
 #define MOTOR_NEG   TIM_CHANNEL_2
 
-#define FORGET  1
 #define MAX_PWM 100
 #define MOTOR_MAX_VEL 69
 
@@ -39,20 +36,14 @@
 
 extern double posKp, posKi, posKd;
 
-extern int RDir, LDir;
+uint32_t    pTxMailbox = 0;
+static CAN_TxHeaderTypeDef M3508_H_Tx;
 
-extern double torKp, torKi;
-
-uint32_t timChannel[4] = {TIM_CHANNEL_1, TIM_CHANNEL_2, TIM_CHANNEL_3, TIM_CHANNEL_4};
-
-const int initDir[MOTOR_NUM] = {1 * ALL_DIR, 1 * ALL_DIR,};
-
-static int Dir[MOTOR_NUM] = {1 * ALL_DIR, 1 * ALL_DIR};
-//static int Dir[MOTOR_NUM] = {1, 1, 0, 1, -1, 0, 0, 0};
+static int Dir[MOTOR_NUM] = {-1};
 static int16_t targetPos[MOTOR_NUM];
 static int motorCount[MOTOR_NUM];
 static int PWM[MOTOR_NUM];
-static double biasThreshold = 80;
+static double biasThreshold = 50;
 //int endPoint = 3000;                               //End point AD value;
 //uint8_t UART_data[2];
 static int biasOfPosBias_And_LastPosBias[MOTOR_NUM];
@@ -60,7 +51,10 @@ static int lastposBias[MOTOR_NUM];
 static int posBiasIntegration[MOTOR_NUM];
 static int lastRPos = 0, lastLPos = 0;
 static int posBias[MOTOR_NUM];                    //compute posBias
+extern int32_t stepper0Speed;
+extern int32_t stepper1Speed;
 
+extern int motor0Flag, motor1Flag, motor2Flag, motor3Flag, stepper0Flag, stepper1Flag;
 /**
     * @breif    Compute the absolute value of x.
     * @note     None
@@ -71,6 +65,16 @@ int AbsOf(int x) {
     if (x < 0) x = -x;
 
     return x;
+}
+/**
+    * @breif    Print the infos.
+    * @note     None
+    * @param    AD_Value
+    * @retval   None
+    */
+void PrintPIDinfo(int AD_Value, int endPoint) {
+    printf("%d, %d, %d, %.2lf, %.2lf, %.2lf, %d\n", AD_Value, targetPos[1],
+           PWM[0], posKp * posBias[0], posKi * posBiasIntegration[0], posKd * (posBias[0] - lastposBias[0]), endPoint);
 }
 
 /**
@@ -85,116 +89,26 @@ void ChangetargetPosOf(int channel, int newtargetPos) {
 }
 
 /**
-    * @breif    Get Dir of channel
-    * @note     None
-    * @param    channel
-    * @retval   Dir[channel]
-    */
-int GetDirOf(int channel) {
-    return Dir[channel];
-}
-
-/**
-    * @breif    Change the channel to &htim
-    * @note     None
-    * @param    channel
-    * @retval   TIM_HandleTypeDef htim
-    */
-TIM_HandleTypeDef *getHtimOf(int motor) {
-    switch (motor) {
-        case 0:
-            return &htim1;
-        case 1:
-            return &htim1;
-    }
-}
-
-/**
-    * @breif    Get the TIM_CHANNEL of Motor POSITIVE
-    * @note     None
-    * @param    MOTOR channel
-    * @retval   TIM_CHANNEL_x
-    */
-uint32_t getPosiTimChannelOf(int channel) {
-    switch (channel) {
-        case 0:
-            return TIM_CHANNEL_1;
-        case 1:
-            return TIM_CHANNEL_4;
-    }
-}
-
-/**
-    * @breif    Get the TIM_CHANNEL of Motor POSITIVE
-    * @note     None
-    * @param    MOTOR channel
-    * @retval   TIM_CHANNEL_x
-    */
-uint32_t getNegTimChannelOf(int channel) {
-    switch (channel) {
-        case 0:
-            return TIM_CHANNEL_2;
-        case 1:
-            return TIM_CHANNEL_3;
-    }
-}
-
-
-/**
-    * @breif    Print the infos.
-    * @note     None
-    * @param    AD_Value
-    * @retval   None
-    */
-void PrintPIDinfo(int channel) {
-//    printf("%d, %d, %d, %.2lf, %.2lf, %.2lf\n", targetPos[channel],
-//           __HAL_TIM_GET_COMPARE(getHtimOf(channel), getPosiTimChannelOf(channel)), __HAL_TIM_GET_COMPARE(getHtimOf(channel),getNegTimChannelOf(channel)),
-//           posKp * posBias[channel], posKi * posBiasIntegration[channel], posKd * (posBias[channel] - lastposBias[channel]));
-}
-
-/**
     * @breif    Motor Init
     * @note     None
     * @param    None
     * @retval   None
     */
-void MotorInit(void) {
-//    for (int i = 0; i < 4; ++i){
-//        HAL_TIM_PWM_Start(getHtimOf(i * 2), TIM_CHANNEL_ALL);
-//    }
-//    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_ALL);
-//    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_ALL);
-//    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_ALL);
-//    HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_ALL);
-    for (int i = 0; i < 2; ++i) {
-        HAL_TIM_PWM_Start(getHtimOf(i), getPosiTimChannelOf(i));
-        HAL_TIM_PWM_Start(getHtimOf(i), getNegTimChannelOf(i));
-    }
-}
-
-/**
-    * @breif    Init Dir
-    * @note     None
-    * @param    None
-    * @retval   None
-    */
-void DirInit(int channel) {
-    Dir[channel] = initDir[channel];
-}
-
-/**
-    * @breif    Turn the right motor's direction
-    * @note     None
-    * @param    channel
-    * @retval   None
-    */
-void turnDirOf(int channel) {
-    if (Dir[channel] == -1) {                                                             //Current direction is reverse
-        __HAL_TIM_SET_COMPARE(getHtimOf(channel), getNegTimChannelOf(channel), 0);
-    } else if (Dir[channel] == 1) {                             //Current direction is normal
-        __HAL_TIM_SET_COMPARE(getHtimOf(channel), getPosiTimChannelOf(channel), 0);
-    }
-    Dir[channel] = -Dir[channel];
+void MotorInit(void){
+#if USE_CAN1
+    HAL_CAN_Init(&hcan1);
+    HAL_CAN_Start(&hcan1);
+#endif
+#if USE_CAN2
+    HAL_CAN_Init(&hcan2);
+    HAL_CAN_Start(&hcan2);
+#endif
+    M3508_H_Tx.StdId = 0x200;
+    M3508_H_Tx.ExtId = 0x0;
+    M3508_H_Tx.IDE = CAN_ID_STD;
+    M3508_H_Tx.RTR = CAN_RTR_DATA;
+    M3508_H_Tx.TransmitGlobalTime = DISABLE;
+    M3508_H_Tx.DLC = 8;
 }
 
 /**
@@ -203,13 +117,77 @@ void turnDirOf(int channel) {
     * @param    channel, PWM
     * @retval   None
     */
-void PWM_Renew(int channel, int PWM) {
-    if (Dir[channel] == -1) {                                                             //Current direction is reverse
-        __HAL_TIM_SET_COMPARE(getHtimOf(channel), getNegTimChannelOf(channel), PWM);
-    } else if (Dir[channel] == 1) {                                                       //Current direction is normal
-        __HAL_TIM_SET_COMPARE(getHtimOf(channel), getPosiTimChannelOf(channel), PWM);
+void PWM_Renew(int channel, int16_t PWM) {
+    static uint8_t data[8];
+    switch (channel) {
+        case 1:
+            if (motor0Flag) {
+                data[0] = (uint8_t) (PWM >> 8);
+                data[1] = (uint8_t) (PWM & 0xFF);
+                break;
+            } else {
+                data[0] = 0;
+                data[1] = 1;
+                break;
+            }
+        case 2:
+            if (motor1Flag) {
+                data[2] = (uint8_t) (PWM >> 8);
+                data[3] = (uint8_t) (PWM & 0xFF);
+                break;
+            } else {
+                data[2] = 0;
+                data[3] = 1;
+                break;
+            }
+        case 3:
+            if (motor2Flag) {
+                data[4] = (uint8_t) (PWM >> 8);
+                data[5] = (uint8_t) (PWM & 0xFF);
+                break;
+            } else {
+                data[4] = 0;
+                data[5] = 1;
+                break;
+            }
+        case 4:
+            if (motor3Flag) {
+                data[6] = (uint8_t) (PWM >> 8);
+                data[7] = (uint8_t) (PWM & 0xFF);
+                break;
+            } else {
+                data[6] = 0;
+                data[7] = 1;
+                break;
+            }
+        case 5:
+            if (stepper0Flag) {
+                StepperSetSpeed(STEPPER1, -PWM);
+                stepper0Speed = -PWM;
+                break;
+            } else {
+                stepper0Speed = -PWM;
+                break;
+            }
+        case 6:
+            if (stepper1Flag) {
+                StepperSetSpeed(STEPPER2, -PWM);
+                stepper1Speed = -PWM;
+                break;
+            } else {
+                stepper0Speed = -PWM;
+                break;
+            }
     }
+//    uint8_t data[8] = {0x26, 0xE8, 0x06, 0xE8, 0x06, 0xE8, 0x06, 0xE8};
+#if USE_CAN1
+    HAL_CAN_AddTxMessage(&hcan1, &M3508_H_Tx, data, &pTxMailbox);
+#endif
+#if USE_CAN2
+    HAL_CAN_AddTxMessage(&hcan2, &M3508_H_Tx, data, &pTxMailbox);
+#endif
 }
+
 
 /**
     * @breif    Use position PID algorithm to renew PWM signals.
@@ -221,28 +199,20 @@ void Position_PID(void) {
 //    static int lastposBias[0], lastLPosBias, LPosBiasIntegration, posBias[0]Integration;
 
     for (int i = 0; i < MOTOR_NUM; ++i) {
-        motorCount[i] = ADC_DMA_GetADCof(i);
         posBias[i] = targetPos[i] - motorCount[i];                    //compute posBias
         biasOfPosBias_And_LastPosBias[i] = AbsOf(posBias[0] - lastposBias[0]);
         posBias[i] *= FORGET;
-        if (biasOfPosBias_And_LastPosBias[i] <=
-            biasThreshold)                                      //New algorithm designed by me
+        if (biasOfPosBias_And_LastPosBias[i] <= biasThreshold)                                      //New algorithm designed by me
             if (AbsOf(posBias[0]) <= biasThreshold)                                      //New algorithm designed by me
                 posBiasIntegration[i] = posBias[i];
         //compute intergral of posBias
         if (AbsOf(posKi * posBiasIntegration[i]) >= 60)
             posBiasIntegration[i] *= 0.9;                                               //anti-saturation
         PWM[i] = (posKp * posBias[i] + posKi * posBiasIntegration[i] + posKd * (posBias[i] - lastposBias[i]))
-                 * MOTOR_MAX_VEL / MAX_PWM * Dir[i] + 0.5;
+                 * MOTOR_MAX_VEL / MAX_PWM + 0.5;
         lastposBias[i] = posBias[i];                            //save posBiass
-        if (PWM[i] < 0) {
-            turnDirOf(i);
-            PWM[i] = -PWM[i];
-        }
-        if (PWM[i] > MAX_PWM) PWM[i] = MAX_PWM;
-        PWM_Renew(i, PWM[i]);                                                             //Pure position PID
-//        SetTargetVel(i, (double) PWM[i]);
-//        IncrementalPI(i);                                                                    //DIDN'T TEST!!!!!
+//        PWM_Renew(PWM[i]);
+
     }
 //    if (LPWM < 0) {
 //        LTurnDir();
@@ -264,16 +234,14 @@ void Position_PID(void) {
 int FindEndPoint() {
     int i = 0, sum = 0;
     for (int i = 0; i < MOTOR_NUM; ++i)
-        PWM[i] = 65;
+        PWM[i] = 45;
     PWM[4] = 70;
     int16_t adcValue[ADC_BUFF_SIZE] = {10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000};
-    for (int i = 0; i < MOTOR_NUM; ++i) {
-        PWM_Renew(i, PWM[i]);
-    }
+    for (int i = 0; i < MOTOR_NUM; ++i)
+//        PWM_Renew(PWM[i]);
 
-    HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_RESET);
     HAL_Delay(1000);
-    HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
+
 //    do {
 //        HAL_ADC_PollForConversion(&hadc1, 50);//等待转换完成，第二个参数表示超时时间，
 //        if (HAL_IS_BIT_SET(HAL_ADC_GetState(&hadc1), HAL_ADC_STATE_REG_EOC)) {
@@ -295,19 +263,6 @@ int FindEndPoint() {
     for (int i = 0; i < MOTOR_NUM; ++i)
         PWM[i] = 0;
     for (int i = 0; i < MOTOR_NUM; ++i)
-        PWM_Renew(i, PWM[i]);
+//        PWM_Renew(PWM[i]);
     return endPoint;
-}
-
-/**
-    * @breif    Open circle motor driver
-    * @note     None
-    * @param    lMSpd, rMSpd
-    * @retval   None
-    */
-void OpenCir(int64_t lMSpd, int64_t rMSpd){
-//    PWM_Renew(0, lMSpd);
-//    PWM_Renew(1, rMSpd);
-    SetTargetVel(0, lMSpd);
-    SetTargetVel(1, rMSpd);
 }

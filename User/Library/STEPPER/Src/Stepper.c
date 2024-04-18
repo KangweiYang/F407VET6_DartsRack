@@ -4,13 +4,20 @@
 
 #include "../Inc/Stepper.h"
 #include "main.h"
+#include "usart.h"
 #include "tim.h"
 
-void StepperChangeDir(void){
+static int16_t lastFreq[4] = {1, 1, 1, 1};
 
+int StepperGetChannel(TIM_HandleTypeDef *htim){
+    if (htim == &htim1) return 0;
+    else if (htim == &htim3) return 1;
+    else if (htim == &htim4) return 2;
+    else if (htim == &htim9) return 3;
 }
 
 void StepperInit(TIM_HandleTypeDef *htim, uint32_t channel, uint16_t prescaler){
+    HAL_TIM_PWM_Init(htim);
     HAL_TIM_PWM_Start(htim, channel);
     __HAL_TIM_SET_COMPARE(htim, channel, 0);
     __HAL_TIM_SET_PRESCALER(htim, prescaler);
@@ -21,11 +28,19 @@ void StepperStart(TIM_HandleTypeDef *htim, uint32_t channel){
 }
 
 void StepperSetSpeed(TIM_HandleTypeDef *htim, uint32_t channel, int16_t frequency){
-    if(frequency < 0){
-        frequency = - frequency;
-        StepperChangeDir();
+    if(lastFreq[StepperGetChannel(htim)] * frequency < 0) {
+        if (htim == &htim1) HAL_GPIO_TogglePin(STEPPER1_DIR_GPIO_Port, STEPPER1_DIR_Pin);
+        else if (htim == &htim3) HAL_GPIO_TogglePin(STEPPER2_DIR_GPIO_Port, STEPPER2_DIR_Pin);
+        else if (htim == &htim4) HAL_GPIO_TogglePin(STEPPER3_DIR_GPIO_Port, STEPPER3_DIR_Pin);
+        else if (htim == &htim9) HAL_GPIO_TogglePin(STEPPER4_DIR_GPIO_Port, STEPPER4_DIR_Pin);
     }
-    __HAL_TIM_SET_PRESCALER(htim, APB2_FREQ / frequency / HALF_COMPARE / 2);
+    if(frequency != 0)  lastFreq[StepperGetChannel(htim)] = frequency;
+#if STEPPER_INFO
+    printf("prescaler = %d \n",  APB2_FREQ / frequency / HALF_COMPARE / 2);
+#endif
+    if(frequency < 0)   frequency = -frequency;
+    if(htim == &htim3)   __HAL_TIM_SET_PRESCALER(htim, APB2_FREQ / frequency / HALF_COMPARE / 4);
+    else    __HAL_TIM_SET_PRESCALER(htim, APB2_FREQ / frequency / HALF_COMPARE / 2);
 }
 
 void StepperStop(TIM_HandleTypeDef *htim, uint32_t channel){

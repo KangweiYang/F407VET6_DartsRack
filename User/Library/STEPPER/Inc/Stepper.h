@@ -18,4 +18,8 @@ void StepperSetSpeed(TIM_HandleTypeDef *htim, uint32_t channel, int16_t frequenc
 
 void StepperStop(TIM_HandleTypeDef *htim, uint32_t channel);
 
+void StepperTensionControlStart(int channel);
+
+void StepperTensionControl(int channel);
+
 #endif //STEPPER_H

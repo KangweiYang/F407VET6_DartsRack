@@ -30,14 +30,14 @@ double velKpStepper = 0, velKiStepper = 20;
 
 int32_t tension1 = 0;
 int32_t tension2 = 0;
-int32_t stepper0Speed = 0;
-int32_t stepper1Speed = 0;
+int16_t stepper0Speed = 0;
+int16_t stepper1Speed = 0;
 
 
 int16_t current[4], pos[4], vel[4];
 double targetVel[4];
 int targetPos[4];
-double targetTen[2] = {-200, 0};
+double targetTen[2] = {-770, 0};
 
 CAN_RxHeaderTypeDef M3508_H_Rx_1;
 CAN_RxHeaderTypeDef M3508_H_Rx_2;
@@ -50,6 +50,7 @@ uint16_t ADC1Value[100];
 uint32_t adc1in4, adc1in5, adc1in14, adc1in15;
 
 int motor0Flag = 0, motor1Flag = 0, motor2Flag = 0, motor3Flag = 0, stepper0Flag = 0, stepper1Flag = 0;
+int stepper0WaitingToStopFlag = 0, stepper1WaitingToStopFlag = 0;
 
 void DartLoad(uint16_t delayTime) {
     motor0Flag = 0;
@@ -60,8 +61,10 @@ void DartLoad(uint16_t delayTime) {
     targetVel[3] = 2000;
     targetVel[0] = 0;
 //    HAL_Delay(delayTime); //3700
-    while (HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin) != HALL_DETECTED)
+    while (HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin) != HALL_DETECTED) {
         targetVel[0] = 0;
+        tension1 = RS485_1_GetTension();
+    }
     HAL_Delay(100);
     motor0Flag = 0;
     motor1Flag = 0;
@@ -85,6 +88,7 @@ void DartRelease(uint16_t delayTime) {
            (targetVel[1] != 0 || targetVel[3] != 0)) {
 
         targetVel[0] = 0;
+        tension1 = RS485_1_GetTension();
         if (HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin) == HALL_DETECTED) targetVel[3] = 0;
 
         if (HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin) == HALL_DETECTED) targetVel[1] = 0;
@@ -104,7 +108,9 @@ void DartShoot(uint16_t delayTime) {
     motor3Flag = 0;
     targetVel[0] = -2000;
 //    HAL_Delay(delayTime);
-    while (HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin) == HALL_DETECTED);
+    while (HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin) == HALL_DETECTED){
+        tension1 = RS485_1_GetTension();
+    }
     HAL_Delay(300);
     targetVel[0] = 0;
     motor0Flag = 0;
@@ -155,11 +161,12 @@ void UserInit(void) {
     Double_PID_Init();
 
     StepperStart(STEPPER1);
-    StepperStart(STEPPER2);
+//    StepperStart(STEPPER2);
+    StepperStart(STEPPER4);
 
     StepperSetSpeed(STEPPER1, 0);
     HAL_Delay(100);
-    for (int i = 0; i < 1200; i += 10){
+    for (int i = 0; i < 1200; i += 10) {
         HAL_Delay(4);
 #if STEPPER1_2_DIR == 1
 //        StepperSetSpeed(STEPPER1, i);
@@ -169,80 +176,23 @@ void UserInit(void) {
         StepperSetSpeed(STEPPER1, -i);
         StepperSetSpeed(STEPPER2, i);
 #endif
-        StepperSetSpeed(STEPPER3, i);
-        StepperSetSpeed(STEPPER4, i);
+//        StepperSetSpeed(STEPPER3, i);
+//        StepperSetSpeed(STEPPER4, i);
     }
+//    StepperSetSpeed(STEPPER4, 900);
+//    StepperSetSpeed(STEPPER4, -700);
 
 #if STEPPER1_2_DIR == 0
     StepperStop(STEPPER1);
     StepperStop(STEPPER2);
 #endif
-    StepperStop(STEPPER2);
+//    StepperStop(STEPPER2);
 
 
     HAL_TIM_Base_Start_IT(&htim6);
-    for (int i = 0; i < 10; ++i) {
-        tension1 = RS485_1_GetTension();
-        printf("%ld, %ld\n", tension1, stepper0Speed);
-    }
-
-    if(tension1 > targetTen[0] + 2)    stepper0Speed = 1200;
-    else if(tension1 < targetTen[0] - 2)    stepper0Speed = -1200;
-    if(stepper0Speed < 0){
-        for (int i = 0; i > stepper0Speed; i -= 10){
-            HAL_Delay(1);
-            StepperSetSpeed(STEPPER1, i);
-        }
-    }
-    else {
-        for (int i = 0; i < stepper0Speed; i += 10) {
-            HAL_Delay(1);
-            StepperSetSpeed(STEPPER1, i);
-        }
-    }
-//    for (int i = 0; i < 10; ++i) {
-//        tension1 = RS485_1_GetTension();
-//        printf("%ld, %ld\n", tension1, stepper0Speed);
-//    }
-//    if(stepper0Speed == 0){
-//        if(STEPPER1_2_Kp > 0){
-//            for (int i = 0; i < STEPPER1_2_Kp; ++i) {
-//                StepperSetSpeed(STEPPER1, i);
-//                stepper0Speed = i;
-//                printf("%ld, %ld\n", tension1, stepper0Speed);
-//                HAL_Delay(100);
-//            }
-//        }
-//        if(STEPPER1_2_Kp < 0){
-//            for (int i = 0; i > STEPPER1_2_Kp; --i){
-//                StepperSetSpeed(STEPPER1, i);
-//                stepper0Speed = i;
-//                printf("%ld, %ld\n", tension1, stepper0Speed);
-//                HAL_Delay(100);
-//            }
-//        }
-//    }
-
-    while(tension1 <= targetTen[0] - 5 || tension1 >= targetTen[0] + 5){
-        tension1 = RS485_1_GetTension();
-        printf("%ld, %ld\n", tension1, stepper0Speed);
-        if(stepper0Speed != 1200 && stepper0Speed != -1200){
-            StepperSetSpeed(STEPPER1, STEPPER1_2_Kp);
-            stepper0Speed = STEPPER1_2_Kp;
-
-        }
-    }
-    StepperSetSpeed(STEPPER1, 0);
-    stepper0Speed = 0;
-    HAL_Delay(200);
-//    stepper0Flag = 1;
-
-//    for (int i = 0; i > stepper0Speed; i -= 10){
-//        StepperSetSpeed(STEPPER1, i);
-//        HAL_Delay(10);
-
-//    }
-
+    stepper0Flag = 1;
+    StepperTensionControlStart(1);
+    HAL_TIM_Base_Start_IT(&htim10);
 }
 
 void ShootOneDart(void) {
@@ -340,6 +290,7 @@ void CubeMXInit(void){
     MX_TIM3_Init();
     MX_TIM4_Init();
     MX_TIM9_Init();
+    MX_TIM10_Init();
     MX_I2C1_Init();
     MX_TIM6_Init();
     MX_CAN2_Init();
@@ -355,21 +306,40 @@ void CubeMXInit(void){
   */
 int main(void) {
     CubeMXInit();
-    printf("hello\n");
     RS485Init();
+    printf("hello\n");
     UserInit();
 
+    /*
+    StepperStart(STEPPER3);
+    StepperSetSpeed(STEPPER3, -500);
+    for (int i = 0; i < 50; ++i){
+        tension1 = RS485_1_GetTension();
+        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
+    }
+    StepperSetSpeed(STEPPER3, 0);
+    for (int i = 0; i < 300; ++i){
+        tension1 = RS485_1_GetTension();
+        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
+    }
 
-//    stepper0Flag = 0;
-//    ShootOneDart();
+    for (int i = 0; i < 100; ++i){
+        tension1 = RS485_1_GetTension();
+        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
+    }
+    stepper0Flag = 0;
+    StepperSetSpeed(STEPPER3, 0);
+
+
+    stepper0Flag = 0;
+    ShootOneDart();
+     */
+    DartLoad(1);
 
     while(1){
+        tension1 = RS485_1_GetTension();
 //        HAL_Delay(1000);
 
-        tension1 = RS485_1_GetTension();
-        printf("%ld, %ld\n", tension1, stepper0Speed);
-        StepperSetSpeed(STEPPER1, STEPPER1_2_Kp);
-        stepper0Speed = STEPPER1_2_Kp;
 //        if(tension1 == targetTen[0]){
 //            StepperSetSpeed(STEPPER1, 0);
 //            stepper0Speed = 0;
@@ -428,7 +398,7 @@ int main(void) {
 /* USER CODE END 3 */
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-    if (htim->Instance == htim6.Instance) {
+    if (htim->Instance == htim6.Instance) {     //1ms timer
         static int cont = 0;
         cont++;
         GetCur();
@@ -436,16 +406,32 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         IncrementalPI(1, velKp, velKi, vel[0], targetVel[0]);
         IncrementalPI(2, velKp, velKi, vel[1], targetVel[1]);
         IncrementalPI(4, velKp, velKi, vel[3], targetVel[3]);
-//        IncrementalPI(5, velKpStepper, velKiStepper, tension1, targetTen[0]);
-//        IncrementalPI(2, velKp, velKi, vel[1], targetVel[3]);
-//        IncrementalPI(4, velKp, velKi, vel[3], -800);
-//        Double_PID(posKp, posKi, posKd, pos, targetPos);
-//        PWM_Renew(1, -1000);
-//        PWM_Renew(2, 1300);
-//        PWM_Renew(4, 2500);
         if (cont == 100) {
 //            printf("targetVel = [%lf], [%lf], [%lf], [%lf]\n", targetVel[0], targetVel[1], targetVel[2], targetVel[3]);
             cont = 0;
         }
     }
+    if (htim->Instance == htim10.Instance) {     //100ms timer
+        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
+        if (stepper0Flag) {
+            if (stepper0WaitingToStopFlag) {
+                if (tension1 >= targetTen[0] - 5 && tension1 <= targetTen[0] + 5) {
+                    stepper0Speed = 0;
+                    StepperSetSpeed(STEPPER1, 0);
+                    stepper0WaitingToStopFlag = 0;
+                    printf("stop\n");
+                }
+            } else
+                StepperTensionControl(1);
+        }
+        if(stepper1Flag){
+//        if(stepper1WaitingToStopFlag){
+//            if(tension2 <= targetTen[1] - 5 || tension2 >= targetTen[1] + 5){
+//                stepper1Speed = 0;
+//                StepperSetSpeed(STEPPER2, 0);
+//            }
+//        }
+        }
+    }
+
 }

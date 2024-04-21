@@ -91,8 +91,8 @@ void SystemClock_Config(void);
 //stepper
 #define STEPPER1    &htim1, TIM_CHANNEL_1   //PA8
 #define STEPPER2    &htim3, TIM_CHANNEL_1   //PA6
-#define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
-#define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
+#define STEPPER4    &htim4, TIM_CHANNEL_1   //PD12
+#define STEPPER3    &htim9, TIM_CHANNEL_1   //PE5
 #define MOTOR_NUM  5
 
 #define USE_CAN1    1
@@ -104,11 +104,14 @@ void SystemClock_Config(void);
 #define ADC_DMA_INFO    0
 
 //stepper1,2 dir
-#define STEPPER_INFO    0
+#define STEPPER_INFO    1
+
+#define STEPPER1_2_MAX_PUL  1200
+#define STEPPER1_2_MIN_CHANGE   (1200 / 20)
 
 #define STEPPER1_2_DIR  1
 
-#define STEPPER1_2_Kp   40 * (tension1 - targetTen[0])
+#define STEPPER1_Kp   20 * (tension1 - targetTen[0])
 
 //rs485
 #define HRS485_1_USART  &huart2

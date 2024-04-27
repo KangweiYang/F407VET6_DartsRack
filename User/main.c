@@ -37,7 +37,7 @@ int16_t stepper1Speed = 0;
 int16_t current[4], pos[4], vel[4];
 double targetVel[4];
 int targetPos[4];
-double targetTen[2] = {-770, 0};
+double targetTen[2] = {-170, 0};
 
 CAN_RxHeaderTypeDef M3508_H_Rx_1;
 CAN_RxHeaderTypeDef M3508_H_Rx_2;
@@ -65,6 +65,9 @@ void DartLoad(uint16_t delayTime) {
         targetVel[0] = 0;
         tension1 = RS485_1_GetTension();
     }
+#if SHOOT_INFO
+    printf("DART LOAD OK!\n");
+#endif
     HAL_Delay(100);
     motor0Flag = 0;
     motor1Flag = 0;
@@ -93,6 +96,9 @@ void DartRelease(uint16_t delayTime) {
 
         if (HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin) == HALL_DETECTED) targetVel[1] = 0;
     }
+#if SHOOT_INFO
+    printf("DART RELEASE OK!\n");
+#endif
     motor0Flag = 0;
     motor1Flag = 0;
     motor2Flag = 0;
@@ -111,6 +117,9 @@ void DartShoot(uint16_t delayTime) {
     while (HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin) == HALL_DETECTED){
         tension1 = RS485_1_GetTension();
     }
+#if SHOOT_INFO
+    printf("DART SHOOT OK!\n");
+#endif
     HAL_Delay(300);
     targetVel[0] = 0;
     motor0Flag = 0;
@@ -161,19 +170,20 @@ void UserInit(void) {
     Double_PID_Init();
 
     StepperStart(STEPPER1);
-//    StepperStart(STEPPER2);
+    StepperStart(STEPPER2);
     StepperStart(STEPPER4);
 
     StepperSetSpeed(STEPPER1, 0);
     HAL_Delay(100);
-    for (int i = 0; i < 1200; i += 10) {
+    for (int i = 0; i < 3900; i += 10) {
+
         HAL_Delay(4);
 #if STEPPER1_2_DIR == 1
 //        StepperSetSpeed(STEPPER1, i);
 //        StepperSetSpeed(STEPPER2, -i);
 #endif
 #if STEPPER1_2_DIR == -1
-        StepperSetSpeed(STEPPER1, -i);
+//        StepperSetSpeed(STEPPER1, -i);
         StepperSetSpeed(STEPPER2, i);
 #endif
 //        StepperSetSpeed(STEPPER3, i);
@@ -198,10 +208,8 @@ void UserInit(void) {
 void ShootOneDart(void) {
     HAL_Delay(1000);
     ServoGraspDart();
-    HAL_Delay(1000);
     DartLoad(3700);
     DartRelease(2100);
-    HAL_Delay(1000);
     DartShoot(605);
 }
 
@@ -310,34 +318,33 @@ int main(void) {
     printf("hello\n");
     UserInit();
 
-    /*
+
     StepperStart(STEPPER3);
     StepperSetSpeed(STEPPER3, -500);
     for (int i = 0; i < 50; ++i){
         tension1 = RS485_1_GetTension();
-        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
+//        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
     }
     StepperSetSpeed(STEPPER3, 0);
     for (int i = 0; i < 300; ++i){
         tension1 = RS485_1_GetTension();
-        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
+//        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
     }
 
     for (int i = 0; i < 100; ++i){
         tension1 = RS485_1_GetTension();
-        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
+//        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
     }
     stepper0Flag = 0;
-    StepperSetSpeed(STEPPER3, 0);
 
-
-    stepper0Flag = 0;
-    ShootOneDart();
-     */
-    DartLoad(1);
+//    ShootOneDart();
+//    DartLoad(1);
 
     while(1){
         tension1 = RS485_1_GetTension();
+//        printf("BACK: %d, LEFT: %d, RIGHT: %d\n", HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin),
+//               HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin),
+//               HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin));
 //        HAL_Delay(1000);
 
 //        if(tension1 == targetTen[0]){

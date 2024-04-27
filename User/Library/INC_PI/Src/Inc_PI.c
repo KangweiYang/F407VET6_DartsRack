@@ -14,6 +14,7 @@
 
 
 extern int16_t vel;
+//static int16_t PWM;
 static int16_t PWM[MOTOR_NUM];
 /**
     * @breif    Inc PI init.
@@ -31,11 +32,12 @@ void IncPI_Init(void) {
     * @param    None
     * @retval   None
     */
+
 void IncrementalPI(int channel, double velKp, double velKi, double Velocity, double TargetVel) {
     static double VelBias[MOTOR_NUM], LastVelBias[MOTOR_NUM];
     VelBias[channel] = Velocity - TargetVel;                //compute current bias
     PWM[channel] -= velKp * (VelBias[channel] - LastVelBias[channel]) / 100 + velKi * VelBias[channel] / 1000;        //incremental PI controller
-    if(channel <= 3) {
+    if(channel <= 4) {
         if (PWM[channel] < MIN_PWM) { PWM[channel] = MIN_PWM; }
         if (PWM[channel] > MAX_PWM) { PWM[channel] = MAX_PWM; }
     } else{
@@ -46,3 +48,29 @@ void IncrementalPI(int channel, double velKp, double velKi, double Velocity, dou
 //    printf("%d, %ld, %d, %lf, %lf\r\n", (int)TargetVel, vel, PWM, velKp * (VelBias - LastVelBias) / 100, velKi * VelBias / 1000);
     PWM_Renew(channel, PWM[channel]);
 }
+
+
+/**
+    * @breif    Use incremental PI algorithm to renew the PWM signals.
+    * @note     None
+    * @param    None
+    * @retval   None
+    */
+/*
+void IncrementalPI(int channel, double velKp, double velKi, double Velocity, double TargetVel) {
+    static double VelBias, LastVelBias;
+    VelBias = Velocity - TargetVel;                //compute current bias
+    PWM -= velKp * (VelBias - LastVelBias) / 100 +
+                    velKi * VelBias / 1000;        //incremental PI controller
+    if (channel <= 4) {
+        if (PWM< MIN_PWM) { PWM= MIN_PWM; }
+        if (PWM> MAX_PWM) { PWM= MAX_PWM; }
+    } else {
+        if (PWM< MIN_STEPPER_PWM) { PWM= MIN_STEPPER_PWM; }
+        if (PWM> MAX_STEPPER_PWM) { PWM= MAX_STEPPER_PWM; }
+    }
+    LastVelBias = VelBias;                    //save last velocity bias
+//    printf("%d, %ld, %d, %lf, %lf\r\n", (int)TargetVel, vel, PWM, velKp * (VelBias - LastVelBias) / 100, velKi * VelBias / 1000);
+    PWM_Renew(channel, PWM);
+}
+*/

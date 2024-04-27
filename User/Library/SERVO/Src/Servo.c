@@ -82,11 +82,15 @@ void ServoGraspDart(void) {
 //        printf("freq= %d\n", freq);
     }
     if (HAL_GPIO_ReadPin(DART_STOP_SW_GPIO_Port, DART_STOP_SW_Pin) == GPIO_PIN_RESET) {
-        StepperStop(STEPPER3);
+        StepperSetSpeed(STEPPER3, -500);
+#if SHOOT_INFO
+        printf("GRASP\n");
+#endif
         ServoSet(SERVO_GRASP, 97, 300);                         //Grasp
         ServoSet(SERVO_UP_DOWN, 102, 1500);                      //Start down
+        StepperStop(STEPPER3);
         ServoSet(SERVO_GRASP, 119, 2000);                        //Release
-        ServoSet(SERVO_UP_DOWN, 18, 2500);                      //Start up
+        ServoSet(SERVO_UP_DOWN, 18, 1);                      //Start up
 
     }
 }

@@ -109,7 +109,7 @@ void SystemClock_Config(void);
 #define STEPPER1_2_MAX_PUL  1200
 #define STEPPER1_2_MIN_CHANGE   (1200 / 20)
 
-#define STEPPER1_2_DIR  1
+#define STEPPER1_2_DIR  -1
 
 #define STEPPER1_Kp   20 * (tension1 - targetTen[0])
 
@@ -118,6 +118,9 @@ void SystemClock_Config(void);
 #define HRS485_2_USART  &huart3
 
 #define RS485_INFO  0
+
+//shoot progress
+#define SHOOT_INFO  1
 
 #define TENSION1_DATA_ADDRESS    4
 #define TENSION2_DATA_ADDRESS    3

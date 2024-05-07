@@ -57,16 +57,16 @@ void MX_CAN1_Init(void)
   }
   /* USER CODE BEGIN CAN1_Init 2 */
 
-    CAN_FilterInitStructure.FilterActivation = ENABLE;//使能过滤器
+    CAN_FilterInitStructure.FilterActivation = ENABLE;//使能过滤�?
     CAN_FilterInitStructure.FilterBank = 1;//指定过滤器为1
     CAN_FilterInitStructure.FilterMode = CAN_FILTERMODE_IDMASK;//指定过滤器为标识符屏蔽位模式
-    CAN_FilterInitStructure.FilterScale = CAN_FILTERSCALE_32BIT;//过滤器位宽为32位
+    CAN_FilterInitStructure.FilterScale = CAN_FILTERSCALE_32BIT;//过滤器位宽为32�?
     CAN_FilterInitStructure.FilterFIFOAssignment = CAN_FILTER_FIFO0;//设定了指向过滤器的FIFO
 
     CAN_FilterInitStructure.FilterIdHigh =0x0000 ;//要过滤的ID高位
     CAN_FilterInitStructure.FilterIdLow = 0x0000;//要过滤的ID低位
-    CAN_FilterInitStructure.FilterMaskIdHigh = 0x0000;//过滤器屏蔽标识符的高16位值
-    CAN_FilterInitStructure.FilterMaskIdLow = 0x0000; //过滤器屏蔽标识符的低16位值
+    CAN_FilterInitStructure.FilterMaskIdHigh = 0x0000;//过滤器屏蔽标识符的高16位�??
+    CAN_FilterInitStructure.FilterMaskIdLow = 0x0000; //过滤器屏蔽标识符的低16位�??
 
     HAL_CAN_ConfigFilter(&hcan1,&CAN_FilterInitStructure);
 
@@ -101,16 +101,16 @@ void MX_CAN2_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN CAN2_Init 2 */
-    CAN_FilterInitStructure.FilterActivation = ENABLE;//使能过滤器
+    CAN_FilterInitStructure.FilterActivation = ENABLE;//使能过滤�?
     CAN_FilterInitStructure.FilterBank = 1;//指定过滤器为1
     CAN_FilterInitStructure.FilterMode = CAN_FILTERMODE_IDMASK;//指定过滤器为标识符屏蔽位模式
-    CAN_FilterInitStructure.FilterScale = CAN_FILTERSCALE_32BIT;//过滤器位宽为32位
+    CAN_FilterInitStructure.FilterScale = CAN_FILTERSCALE_32BIT;//过滤器位宽为32�?
     CAN_FilterInitStructure.FilterFIFOAssignment = CAN_FILTER_FIFO0;//设定了指向过滤器的FIFO
 
     CAN_FilterInitStructure.FilterIdHigh =0x0000 ;//要过滤的ID高位
     CAN_FilterInitStructure.FilterIdLow = 0x0000;//要过滤的ID低位
-    CAN_FilterInitStructure.FilterMaskIdHigh = 0x0000;//过滤器屏蔽标识符的高16位值
-    CAN_FilterInitStructure.FilterMaskIdLow = 0x0000; //过滤器屏蔽标识符的低16位值
+    CAN_FilterInitStructure.FilterMaskIdHigh = 0x0000;//过滤器屏蔽标识符的高16位�??
+    CAN_FilterInitStructure.FilterMaskIdLow = 0x0000; //过滤器屏蔽标识符的低16位�??
 
   /* USER CODE END CAN2_Init 2 */
 

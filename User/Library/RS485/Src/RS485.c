@@ -65,11 +65,12 @@ int32_t RS485_1_GetTension(void){
     if(rs4851data[0] == 0x01 && rs4851data[1] == 0x03 && rs4851data[2] == 0x04) tension1DataAddress = 3;
     if(rs4851data[1] == 0x01 && rs4851data[2] == 0x03 && rs4851data[3] == 0x04) tension1DataAddress = 4;
 #if RS485_INFO
-    printf("receive: ");
+    printf("1receive: ");
     for (int i = 0; i < 11; ++i)
         printf("%x,", rs4851data[i]);
     printf("\n");
 #endif
+    HAL_Delay(10);
     return (rs4851data[tension1DataAddress] << 24) | (rs4851data[tension1DataAddress + 1] << 16) |
     (rs4851data[tension1DataAddress + 2] << 8) | (rs4851data[tension1DataAddress + 3] << 0);
 }
@@ -88,10 +89,12 @@ int32_t RS485_2_GetTension(void){
     if(rs4852data[0] == 0x01 && rs4852data[1] == 0x03 && rs4852data[2] == 0x04) tension2DataAddress = 3;
     if(rs4852data[1] == 0x01 && rs4852data[2] == 0x03 && rs4852data[3] == 0x04) tension2DataAddress = 4;
 #if RS485_INFO
-    printf("receive: ");
+    printf("2receive: ");
     for (int i = 0; i < 11; ++i)
         printf("%x,", rs4852data[i]);
     printf("\n");
+//    printf("%d\n", (rs4852data[tension2DataAddress] << 24) | (rs4852data[tension2DataAddress + 1] << 16) |
+//                 (rs4852data[tension2DataAddress + 2] << 8) | (rs4852data[tension2DataAddress + 3] << 0));
 #endif
     return (rs4852data[tension2DataAddress] << 24) | (rs4852data[tension2DataAddress + 1] << 16) |
            (rs4852data[tension2DataAddress + 2] << 8) | (rs4852data[tension2DataAddress + 3] << 0);

@@ -1,8 +1,8 @@
 #include "stdlib.h"
 #include "main.h"
-#include "dma.h"
+//#include "dma.h"
 #include "tim.h"
-#include "adc.h"
+//#include "adc.h"
 #include "can.h"
 #include "usb_otg.h"
 #include "i2c.h"
@@ -20,24 +20,32 @@
 #include "Library/OLED/Inc/UserOLED.h"
 #include "Library/CAN/Inc/Can.h"
 #include "Library/RS485/Inc/RS485.h"
+#include "Library/SHOOT_PROCESS/Inc/ShootProcess.h"
 
+int resetFeedCont = -1;
 
 int PWMtest = 75;
 double posKp = 0.15, posKi = 0.00, posKd = 1;
 double velKp = 150, velKi = 10;
 double posKpStepper = 0.15, posKiStepper = 0.00, posKdStepper = 1;
-double velKpStepper = 0, velKiStepper = 20;
+double velKpStepper = 0, velKiStepper = 10000;
 
 int32_t tension1 = 0;
-int32_t tension2 = 0;
+int32_t tensionL = 0;
 int16_t stepper0Speed = 0;
 int16_t stepper1Speed = 0;
 
 
-int16_t current[4], pos[4], vel[4];
+int16_t current[4], pos[4], vel[6];
 double targetVel[4];
 int targetPos[4];
-double targetTen[2] = {-170, 0};
+double targetTen[2] = {-1600, -1600};
+int targetYawPul = 0;
+
+int furTarTen[4];
+int furTarYaw[4];
+
+int shootFlag = 0;
 
 CAN_RxHeaderTypeDef M3508_H_Rx_1;
 CAN_RxHeaderTypeDef M3508_H_Rx_2;
@@ -51,84 +59,14 @@ uint32_t adc1in4, adc1in5, adc1in14, adc1in15;
 
 int motor0Flag = 0, motor1Flag = 0, motor2Flag = 0, motor3Flag = 0, stepper0Flag = 0, stepper1Flag = 0;
 int stepper0WaitingToStopFlag = 0, stepper1WaitingToStopFlag = 0;
+uint8_t USART1RxBuf[RX_BUFF_LENGTH];
 
-void DartLoad(uint16_t delayTime) {
-    motor0Flag = 0;
-    motor1Flag = 1;
-    motor2Flag = 0;
-    motor3Flag = 1;
-    targetVel[1] = 2000;
-    targetVel[3] = 2000;
-    targetVel[0] = 0;
-//    HAL_Delay(delayTime); //3700
-    while (HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin) != HALL_DETECTED) {
-        targetVel[0] = 0;
-        tension1 = RS485_1_GetTension();
-    }
-#if SHOOT_INFO
-    printf("DART LOAD OK!\n");
-#endif
-    HAL_Delay(100);
-    motor0Flag = 0;
-    motor1Flag = 0;
-    motor2Flag = 0;
-    motor3Flag = 0;
-    targetVel[1] = 0;
-    targetVel[3] = 0;
-}
 
-void DartRelease(uint16_t delayTime) {
-    motor0Flag = 0;
-    motor1Flag = 1;
-    motor2Flag = 0;
-    motor3Flag = 1;
-    targetVel[1] = -3000;
-    targetVel[3] = -3000;
-    targetVel[0] = 0;
-//    HAL_Delay(delayTime); //2100
-    while (((HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin) != HALL_DETECTED) ||
-            HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin) != HALL_DETECTED) &&
-           (targetVel[1] != 0 || targetVel[3] != 0)) {
-
-        targetVel[0] = 0;
-        tension1 = RS485_1_GetTension();
-        if (HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin) == HALL_DETECTED) targetVel[3] = 0;
-
-        if (HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin) == HALL_DETECTED) targetVel[1] = 0;
-    }
-#if SHOOT_INFO
-    printf("DART RELEASE OK!\n");
-#endif
-    motor0Flag = 0;
-    motor1Flag = 0;
-    motor2Flag = 0;
-    motor3Flag = 0;
-    targetVel[1] = 0;
-    targetVel[3] = 0;
-}
-
-void DartShoot(uint16_t delayTime) {
-    motor0Flag = 1;
-    motor1Flag = 0;
-    motor2Flag = 0;
-    motor3Flag = 0;
-    targetVel[0] = -2000;
-//    HAL_Delay(delayTime);
-    while (HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin) == HALL_DETECTED){
-        tension1 = RS485_1_GetTension();
-    }
-#if SHOOT_INFO
-    printf("DART SHOOT OK!\n");
-#endif
-    HAL_Delay(300);
-    targetVel[0] = 0;
-    motor0Flag = 0;
-}
 
 void UserInit(void) {
 
     //adc dma
-    HAL_ADC_Start_DMA(&hadc1, ADC1Value, 100);
+//    HAL_ADC_Start_DMA(&hadc1, ADC1Value, 100);
 
     HAL_TIM_PWM_Init(&htim1);
     HAL_TIM_PWM_Init(&htim3);
@@ -158,6 +96,7 @@ void UserInit(void) {
     M3508_H_Rx_4.Timestamp = 0;
     ServoInit();
 
+
     StepperInit(STEPPER1, 1680 - 1);
     StepperInit(STEPPER2, 1680 - 1);
     StepperInit(STEPPER3, 1680 - 1);
@@ -169,48 +108,46 @@ void UserInit(void) {
     ServoSet(4, 500, 10);
     Double_PID_Init();
 
+    StepperSetSpeed(STEPPER1, 0);
+    StepperSetSpeed(STEPPER2, 0);
+
     StepperStart(STEPPER1);
     StepperStart(STEPPER2);
+    StepperStart(STEPPER3);
     StepperStart(STEPPER4);
+
+    StepperSetSpeed(STEPPER3, 0);
+    StepperSetSpeed(STEPPER4, 0);
 
     StepperSetSpeed(STEPPER1, 0);
     HAL_Delay(100);
-    for (int i = 0; i < 3900; i += 10) {
-
-        HAL_Delay(4);
-#if STEPPER1_2_DIR == 1
-//        StepperSetSpeed(STEPPER1, i);
-//        StepperSetSpeed(STEPPER2, -i);
-#endif
-#if STEPPER1_2_DIR == -1
-//        StepperSetSpeed(STEPPER1, -i);
-        StepperSetSpeed(STEPPER2, i);
-#endif
-//        StepperSetSpeed(STEPPER3, i);
-//        StepperSetSpeed(STEPPER4, i);
-    }
-//    StepperSetSpeed(STEPPER4, 900);
-//    StepperSetSpeed(STEPPER4, -700);
-
-#if STEPPER1_2_DIR == 0
-    StepperStop(STEPPER1);
-    StepperStop(STEPPER2);
-#endif
-//    StepperStop(STEPPER2);
 
 
     HAL_TIM_Base_Start_IT(&htim6);
-    stepper0Flag = 1;
-    StepperTensionControlStart(1);
+//    StepperTensionControlStart(1);
     HAL_TIM_Base_Start_IT(&htim10);
+    stepper0Flag = 1;
+    stepper1Flag = 1;
+    for (int i = 0; i < 20; ++i){
+        tension1 = RS485_1_GetTension();
+        tensionL = RS485_2_GetTension();
+    }
+    HAL_UART_Receive_IT(&huart1, USART1RxBuf, RX_BUFF_LENGTH);
 }
 
-void ShootOneDart(void) {
+void ShootOneDart(int dartSerial) {
+    stepper0Flag = 1;
+    stepper1Flag = 1;
+    targetTen[0] = furTarTen[dartSerial - 1];
+    targetTen[1] = furTarTen[dartSerial - 1];
+    targetYawPul = furTarYaw[dartSerial - 1];
+    if(dartSerial == 1) targetYawPul = furTarYaw[1];
+    else    targetYawPul = -furTarYaw[dartSerial - 1] + furTarYaw[dartSerial];
     HAL_Delay(1000);
     ServoGraspDart();
-    DartLoad(3700);
-    DartRelease(2100);
-    DartShoot(605);
+    DartLoad();
+    DartRelease();
+    DartShoot();
 }
 
 /**
@@ -289,8 +226,8 @@ void CubeMXInit(void){
 
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
-    MX_DMA_Init();
-    MX_ADC1_Init();
+//    MX_DMA_Init();
+//    MX_ADC1_Init();
     MX_CAN1_Init();
     MX_USART1_UART_Init();
     MX_TIM2_Init();
@@ -319,29 +256,17 @@ int main(void) {
     UserInit();
 
 
-    StepperStart(STEPPER3);
-    StepperSetSpeed(STEPPER3, -500);
-    for (int i = 0; i < 50; ++i){
-        tension1 = RS485_1_GetTension();
-//        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
-    }
-    StepperSetSpeed(STEPPER3, 0);
-    for (int i = 0; i < 300; ++i){
-        tension1 = RS485_1_GetTension();
-//        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
-    }
 
-    for (int i = 0; i < 100; ++i){
-        tension1 = RS485_1_GetTension();
-//        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
-    }
-    stepper0Flag = 0;
+//    ShootOneDart(1);
 
-//    ShootOneDart();
-//    DartLoad(1);
 
     while(1){
         tension1 = RS485_1_GetTension();
+        tensionL = RS485_2_GetTension();
+        if(shootFlag){
+            ShootOneDart(shootFlag);
+            shootFlag = 0;
+        }
 //        printf("BACK: %d, LEFT: %d, RIGHT: %d\n", HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin),
 //               HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin),
 //               HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin));
@@ -367,9 +292,11 @@ int main(void) {
 //        }
 
     }
+
 /*
     while (1) {
-        ADC_DMA_Renew();
+        tension1 = RS485_1_GetTension();
+        tensionL = RS485_2_GetTension();
         for (int i = 0; i < 50; ++i) {
             StepperSetSpeed(STEPPER1, 10 * i);
             StepperSetSpeed(STEPPER2, 10 * i);
@@ -389,8 +316,7 @@ int main(void) {
         HAL_Delay(1000);
     }
 
- */
-
+*/
 //        printf("PA0: %d  ", __HAL_TIM_GET_COMPARE(&htim2, TIM_CHANNEL_1));
 //        printf("PA1: %d  \n", __HAL_TIM_GET_COMPARE(&htim2, TIM_CHANNEL_2));
 //        printf("PA2: %d  ", __HAL_TIM_GET_COMPARE(&htim2, TIM_CHANNEL_3));
@@ -402,43 +328,229 @@ int main(void) {
 
     /* USER CODE BEGIN 3 */
 }
+
+int16_t RxPointer = 0;
+ int ContainsAndCopy(uint8_t *buf, int16_t *startPointer, uint8_t byteToFind, uint16_t length, uint8_t *copyBuf){
+    if(*startPointer > RX_BUFF_LENGTH)    *startPointer = 0;
+    for (int i = *startPointer; i < length; ++i){
+        if(buf[i] == byteToFind || buf[i] == '\\'){
+            copyBuf[0] = i - *startPointer;
+            *startPointer = i + 1;
+            return 1;
+        }
+        copyBuf[i - *startPointer + 1] = buf[i];
+    }
+    return 0;
+}
+
+int ContainsSubString(uint8_t *buf, uint8_t *stringToFind){
+    for (int i = 0; i < RX_BUFF_LENGTH; ++i){
+        if(buf[i] == stringToFind[1]){
+            for (int j = 0; j < stringToFind[0] - 1; ++j){
+                if(buf[i + j] != stringToFind[j + 1]){
+                    return 0;
+                }
+            }
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+const uint8_t SetYaw[] = {7, 'S', 'e', 't', 'Y', 'a', 'w'};
+const uint8_t SetTen[] = {7, 'S', 'e', 't', 'T', 'e', 'n'};
+const uint8_t TestShoot[] = {10, 'T', 'e', 's', 't', 'S', 'h', 'o', 'o', 't'};
+const uint8_t AbortShoot[] = {11, 'A', 'b', 'o', 'r', 't', 'S', 'h', 'o', 'o', 't'};
+const uint8_t SetCurYawToZero[] = {16, 'S', 'e', 't', 'C', 'u', 'r', 'Y', 'a', 'w', 'T', 'o', 'Z', 'e', 'r', 'o'};
+const uint8_t ResetFeed[] = {10, 'R', 'e', 's', 'e', 't', 'F', 'e', 'e', 'd'};
+const uint8_t SonicRangeTestSetParas[] = {23, 'S', 'o', 'n', 'i', 'c', 'R', 'a', 'n', 'g', 'e', 'T', 'e', 's', 't', 'S', 'e', 't', 'P', 'a', 'r', 'a', 's'};
+const uint8_t SonicRangeTest[] = {15, 'S', 'o', 'n', 'i', 'c', 'R', 'a', 'n', 'g', 'e', 'T', 'e', 's', 't'};
+const uint8_t ShootTwoDarts[] = {14, 'S', 'h', 'o', 'o', 't', 'T', 'w', 'o', 'D', 'a', 'r', 't', 's'};
 /* USER CODE END 3 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+    if(huart-> Instance == huart1.Instance ) {
+        uint8_t rxHandleBuf[RX_BUFF_LENGTH];
+        for (int i = 0; i < 10; ++i){
+            printf("%c", rxHandleBuf[i]);
+        }
+        printf("\n");
+        if(ContainsAndCopy(USART1RxBuf, &RxPointer, '\n', RX_BUFF_LENGTH, rxHandleBuf)){
+            if(ContainsSubString(rxHandleBuf, SetYaw)){
+                printf("SetYaw\n");
+            }
+        }
+    }
+}
+
+int StrToInt(uint8_t *buf, int16_t startPointer, uint8_t endChar){
+    uint8_t intBuf[20];
+    int result = 0;
+    if(ContainsAndCopy(buf, &startPointer, endChar, RX_BUFF_LENGTH, intBuf)){
+//        printf("\n");
+//        for (int i = 0; i < 2; ++i) printf("%c", intBuf[i]);
+//        printf("\n");
+        int sign = 0;
+        if(intBuf[1] < '9' && intBuf[1] > '0')  sign = 1;
+        else if(intBuf[1] == '-'){
+            intBuf[1] = '0';
+            sign = -1;
+        }
+        for (int i = 1; i <= intBuf[0]; ++i){
+            if(intBuf[i] > '9' || intBuf[i] < '0')   return result;
+            result *= 10;
+            result += sign * (intBuf[i] - '0') % 10;
+        }
+        return result;
+    }
+    return 0;
+}
+
+//int IndexOf(uint8_t *buf, uint8_t )
+
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim->Instance == htim6.Instance) {     //1ms timer
         static int cont = 0;
         cont++;
         GetCur();
-//        ADC_DMA_Renew();
-        IncrementalPI(1, velKp, velKi, vel[0], targetVel[0]);
-        IncrementalPI(2, velKp, velKi, vel[1], targetVel[1]);
-        IncrementalPI(4, velKp, velKi, vel[3], targetVel[3]);
-        if (cont == 100) {
-//            printf("targetVel = [%lf], [%lf], [%lf], [%lf]\n", targetVel[0], targetVel[1], targetVel[2], targetVel[3]);
+        IncrementalPI(0, velKp, velKi, vel[0], targetVel[0]);
+        IncrementalPI(1, velKp, velKi, vel[1], targetVel[1]);
+        IncrementalPI(3, velKp, velKi, vel[3], targetVel[3]);
+//        IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
+//        IncrementalPI(5, velKpStepper, velKiStepper, tensionL, targetTen[1]);
+        if (cont == 10) {
+            if(stepper0Flag == 0) StepperSetSpeed(STEPPER1, 0);
+            else if (stepper0Flag && tension1 <= 10000 && tension1 >= -10000) {
+//            IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
+                StepperStart(STEPPER1);
+                static double lastBias;
+                if(STEPPER1_Kp < -STEPPER1_2_MAX_PUL) {
+                    StepperSetSpeed(STEPPER1, -STEPPER1_2_MAX_PUL);
+                    stepper0Speed = -STEPPER1_2_MAX_PUL;
+                }
+                else if(STEPPER1_Kp > STEPPER1_2_MAX_PUL) {
+                    StepperSetSpeed(STEPPER1, STEPPER1_2_MAX_PUL);
+                    stepper0Speed = STEPPER1_2_MAX_PUL;
+                }
+                else    {
+                    StepperSetSpeed(STEPPER1, STEPPER1_Kp);
+                    stepper0Speed = STEPPER1_Kp;
+                }
+                lastBias = (double) tension1 - targetTen[0];
+//            printf("%lf\n", STEPPER1_Kp);
+//                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed);
+            }
+            if(stepper1Flag == 0) StepperSetSpeed(STEPPER2, 0);
+            else if (stepper1Flag && tensionL <= 10000 && tensionL >= -10000) {
+                int32_t tensionLL = tensionL;
+                static double lastBias;
+//            IncrementalPI(5, velKpStepper, velKiStepper, tensionL, targetTen[1]);
+                StepperStart(STEPPER2);
+                if(STEPPER2_Kp < -STEPPER1_2_MAX_PUL) {
+                    StepperSetSpeed(STEPPER2, -STEPPER1_2_MAX_PUL);
+                    stepper1Speed = -STEPPER1_2_MAX_PUL;
+                }
+                else if(STEPPER2_Kp > STEPPER1_2_MAX_PUL) {
+                    StepperSetSpeed(STEPPER2, STEPPER1_2_MAX_PUL);
+                    stepper1Speed = STEPPER1_2_MAX_PUL;
+                }
+                else    {
+                    StepperSetSpeed(STEPPER2, STEPPER2_Kp);
+                    stepper1Speed = STEPPER2_Kp;
+                }
+                lastBias = (double) tensionL - targetTen[1];
+//            printf("%ld, %lf = -20 * (%lf - %ld)\n", tensionL, STEPPER2_Kp, targetTen[1], tensionLL);
+//                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionLL, stepper0Speed, stepper1Speed);
+            }
             cont = 0;
         }
     }
     if (htim->Instance == htim10.Instance) {     //100ms timer
-        printf("%ld, %d, %d, %d\n", tension1, stepper0Speed, stepper0Flag, stepper0WaitingToStopFlag);
-        if (stepper0Flag) {
-            if (stepper0WaitingToStopFlag) {
-                if (tension1 >= targetTen[0] - 5 && tension1 <= targetTen[0] + 5) {
-                    stepper0Speed = 0;
-                    StepperSetSpeed(STEPPER1, 0);
-                    stepper0WaitingToStopFlag = 0;
-                    printf("stop\n");
-                }
-            } else
-                StepperTensionControl(1);
+        static uint16_t pointer, couut;
+        couut ++;
+        if(couut >= 10){
+            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed);
+            couut = 0;
         }
-        if(stepper1Flag){
-//        if(stepper1WaitingToStopFlag){
-//            if(tension2 <= targetTen[1] - 5 || tension2 >= targetTen[1] + 5){
-//                stepper1Speed = 0;
-//                StepperSetSpeed(STEPPER2, 0);
-//            }
-//        }
+        if(resetFeedCont > 0)   resetFeedCont--;
+        else if (resetFeedCont == 0) {
+            resetFeedCont = -1;
+            StepperSetSpeed(STEPPER4, 0);
+        }
+        HAL_UART_Receive_IT(&huart1, USART1RxBuf, RX_BUFF_LENGTH);
+        uint8_t rxHandleBuf[RX_BUFF_LENGTH];
+        if (ContainsAndCopy(USART1RxBuf, &RxPointer, '\n', RX_BUFF_LENGTH, rxHandleBuf)) {
+            if (ContainsSubString(rxHandleBuf + 1, SetYaw)) {
+                switch (rxHandleBuf[8]) {
+                    case '1':
+                        furTarYaw[0] = StrToInt(rxHandleBuf, 10, ')');
+                        printf("yaw: %d\n", furTarYaw[0]);
+                        break;
+                    case '2':
+                        furTarYaw[1] = StrToInt(rxHandleBuf, 10, ')');
+                        printf("yaw: %d\n", furTarYaw[1]);
+                        break;
+                    case '3':
+                        furTarYaw[2] = StrToInt(rxHandleBuf, 10, ')');
+                        printf("yaw: %d\n", furTarYaw[2]);
+                        break;
+                    case '4':
+                        furTarYaw[3] = StrToInt(rxHandleBuf, 10, ')');
+                        printf("yaw: %d\n", furTarYaw[3]);
+                        break;
+                }
+            } else if (ContainsSubString(rxHandleBuf + 1, SetTen)) {
+                switch (rxHandleBuf[8]) {
+                    case '1':
+                        furTarTen[0] = StrToInt(rxHandleBuf, 10, ')');
+                        printf("ten: %d\n", furTarTen[0]);
+                        break;
+                    case '2':
+                        furTarTen[1] = StrToInt(rxHandleBuf, 10, ')');
+                        printf("ten: %d\n", furTarTen[1]);
+                        break;
+                    case '3':
+                        furTarTen[2] = StrToInt(rxHandleBuf, 10, ')');
+                        printf("ten: %d\n", furTarTen[2]);
+                        break;
+                    case '4':
+                        furTarTen[3] = StrToInt(rxHandleBuf, 10, ')');
+                        printf("ten: %d\n", furTarTen[3]);
+                }
+            } else if (ContainsSubString(rxHandleBuf, TestShoot)) {
+                static int cout1;
+                cout1++;
+                printf("TestShoot %d\n", cout1);
+                shootFlag = 1;
+            } else if (ContainsSubString(rxHandleBuf, AbortShoot)) {
+                static int cout2;
+                cout2++;
+                printf("AbortShoot %d\n", cout2);
+                shootFlag = 0;
+            } else if (ContainsSubString(rxHandleBuf, SetCurYawToZero)) {
+                static int cout3;
+                cout3++;
+                printf("SetCurYawToZero %d\n", cout3);
+            } else if (ContainsSubString(rxHandleBuf, ResetFeed)) {
+                static int cout4;
+                cout4++;
+                printf("ResetFeed %d\n", cout4);
+                StepperSetSpeed(STEPPER4, -500);
+                resetFeedCont = 30;
+            } else if (ContainsSubString(rxHandleBuf, SonicRangeTestSetParas)) {
+                static int cout6;
+                cout6++;
+                printf("SonicRangeTestSetParas %d\n", cout6);
+            } else if (ContainsSubString(rxHandleBuf, SonicRangeTest)) {
+                static int cout5;
+                cout5++;
+                printf("SonicRangeTest %d\n", cout5);
+            } else if (ContainsSubString(rxHandleBuf, ShootTwoDarts)) {
+                static int cout7;
+                cout7++;
+                printf("ShootTwoDarts %d\n", cout7);
+            }
         }
     }
-
 }

@@ -18,9 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "adc.h"
 #include "can.h"
-#include "dma.h"
 #include "i2c.h"
 #include "tim.h"
 #include "usart.h"

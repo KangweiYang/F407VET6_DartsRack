@@ -19,7 +19,6 @@
 #define MAX_PWM 100
 #define MOTOR_MAX_VEL 69
 
-#define DEBUG
 #define TAG "MotorUnit"
 
 #ifdef DEBUG
@@ -120,7 +119,7 @@ void MotorInit(void){
 void PWM_Renew(int channel, int16_t PWM) {
     static uint8_t data[8];
     switch (channel) {
-        case 1:
+        case 0:
             if (motor0Flag) {
                 data[0] = (uint8_t) (PWM >> 8);
                 data[1] = (uint8_t) (PWM & 0xFF);
@@ -130,7 +129,7 @@ void PWM_Renew(int channel, int16_t PWM) {
                 data[1] = 1;
                 break;
             }
-        case 2:
+        case 1:
             if (motor1Flag) {
                 data[2] = (uint8_t) (PWM >> 8);
                 data[3] = (uint8_t) (PWM & 0xFF);
@@ -140,7 +139,7 @@ void PWM_Renew(int channel, int16_t PWM) {
                 data[3] = 1;
                 break;
             }
-        case 3:
+        case 2:
             if (motor2Flag) {
                 data[4] = (uint8_t) (PWM >> 8);
                 data[5] = (uint8_t) (PWM & 0xFF);
@@ -150,7 +149,7 @@ void PWM_Renew(int channel, int16_t PWM) {
                 data[5] = 1;
                 break;
             }
-        case 4:
+        case 3:
             if (motor3Flag) {
                 data[6] = (uint8_t) (PWM >> 8);
                 data[7] = (uint8_t) (PWM & 0xFF);
@@ -160,22 +159,26 @@ void PWM_Renew(int channel, int16_t PWM) {
                 data[7] = 1;
                 break;
             }
-        case 5:
+        case 4:
             if (stepper0Flag) {
-                StepperSetSpeed(STEPPER1, -PWM);
+//                StepperSetSpeed(STEPPER1, -PWM);
+//                printf("setStepper1: %d\n", -PWM);
                 stepper0Speed = -PWM;
                 break;
             } else {
-                stepper0Speed = -PWM;
+                StepperSetSpeed(STEPPER1, 0);
+                stepper0Speed = 0;
                 break;
             }
-        case 6:
+        case 5:
             if (stepper1Flag) {
-                StepperSetSpeed(STEPPER2, -PWM);
+//                StepperSetSpeed(STEPPER2, -PWM);
+//                printf("setStepper2: %d\n", -PWM);
                 stepper1Speed = -PWM;
                 break;
             } else {
-                stepper0Speed = -PWM;
+                StepperSetSpeed(STEPPER2, 0);
+                stepper1Speed = 0;
                 break;
             }
     }

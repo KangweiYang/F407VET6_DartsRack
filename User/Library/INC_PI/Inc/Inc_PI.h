@@ -9,6 +9,6 @@
 
 void IncPI_Init(void);
 
-void IncrementalPI(int channel, double velKp, double velKi, double Velocity, double TargetVel);
+void IncrementalPI(int channel, double velKp, double velKi, int16_t Velocity, double TargetVel);
 
 #endif //INC_PI_H

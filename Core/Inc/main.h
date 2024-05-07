@@ -58,6 +58,12 @@ void SystemClock_Config(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define LED1_Pin GPIO_PIN_2
+#define LED1_GPIO_Port GPIOE
+#define LED2_Pin GPIO_PIN_3
+#define LED2_GPIO_Port GPIOE
+#define LED3_Pin GPIO_PIN_4
+#define LED3_GPIO_Port GPIOE
 #define RS485_1_RX_TX_CONTROL_Pin GPIO_PIN_6
 #define RS485_1_RX_TX_CONTROL_GPIO_Port GPIOE
 #define STEPPER1_DIR_Pin GPIO_PIN_0
@@ -68,32 +74,42 @@ void SystemClock_Config(void);
 #define STEPPER3_DIR_GPIO_Port GPIOC
 #define STEPPER4_DIR_Pin GPIO_PIN_3
 #define STEPPER4_DIR_GPIO_Port GPIOC
+#define HALL_BACK_SW_Pin GPIO_PIN_4
+#define HALL_BACK_SW_GPIO_Port GPIOA
+#define HALL_LEFT_SW_Pin GPIO_PIN_5
+#define HALL_LEFT_SW_GPIO_Port GPIOA
+#define HALL_RIGHT_SW_Pin GPIO_PIN_5
+#define HALL_RIGHT_SW_GPIO_Port GPIOC
 #define RS485_2_RX_TX_CONTROL_Pin GPIO_PIN_15
 #define RS485_2_RX_TX_CONTROL_GPIO_Port GPIOE
 #define DART_STOP_SW_Pin GPIO_PIN_14
 #define DART_STOP_SW_GPIO_Port GPIOB
-#define HALL_BACK_SW_Pin GPIO_PIN_15
-#define HALL_BACK_SW_GPIO_Port GPIOD
-#define HALL_RIGHT_SW_Pin GPIO_PIN_6
-#define HALL_RIGHT_SW_GPIO_Port GPIOC
-#define HALL_LEFT_SW_Pin GPIO_PIN_7
-#define HALL_LEFT_SW_GPIO_Port GPIOC
+#define HALL_RIGHT_SW__Pin GPIO_PIN_13
+#define HALL_RIGHT_SW__GPIO_Port GPIOD
+#define HALL_LEFT_SW__Pin GPIO_PIN_14
+#define HALL_LEFT_SW__GPIO_Port GPIOD
+#define HALL_BACK_SW__Pin GPIO_PIN_15
+#define HALL_BACK_SW__GPIO_Port GPIOD
 #define SW10_Pin GPIO_PIN_9
 #define SW10_GPIO_Port GPIOC
-#define LED1_Pin GPIO_PIN_10
-#define LED1_GPIO_Port GPIOC
-#define LED2_Pin GPIO_PIN_11
-#define LED2_GPIO_Port GPIOC
-#define LED3_Pin GPIO_PIN_12
-#define LED3_GPIO_Port GPIOC
+#define SONIC_RANGE_TRIG1_Pin GPIO_PIN_8
+#define SONIC_RANGE_TRIG1_GPIO_Port GPIOB
+#define SONIC_RANGE_TRIG2_Pin GPIO_PIN_9
+#define SONIC_RANGE_TRIG2_GPIO_Port GPIOB
+#define SONIC_RANGE_ECHO1_Pin GPIO_PIN_0
+#define SONIC_RANGE_ECHO1_GPIO_Port GPIOE
+#define SONIC_RANGE_ECHO2_Pin GPIO_PIN_1
+#define SONIC_RANGE_ECHO2_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
+
 //stepper
 #define STEPPER1    &htim1, TIM_CHANNEL_1   //PA8
 #define STEPPER2    &htim3, TIM_CHANNEL_1   //PA6
-#define STEPPER4    &htim4, TIM_CHANNEL_1   //PD12
-#define STEPPER3    &htim9, TIM_CHANNEL_1   //PE5
-#define MOTOR_NUM  5
+#define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
+#define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
+#define MOTOR_NUM  6
+#define RX_BUFF_LENGTH  10000
 
 #define USE_CAN1    1
 #define USE_CAN2    0
@@ -106,12 +122,14 @@ void SystemClock_Config(void);
 //stepper1,2 dir
 #define STEPPER_INFO    1
 
-#define STEPPER1_2_MAX_PUL  1200
+#define STEPPER1_2_MAX_PUL  3600
 #define STEPPER1_2_MIN_CHANGE   (1200 / 20)
 
 #define STEPPER1_2_DIR  -1
 
-#define STEPPER1_Kp   20 * (tension1 - targetTen[0])
+extern double lastBias;
+#define STEPPER1_Kp   (20 * ((double) tension1 - targetTen[0]) - 10 * ((double) tension1 - targetTen[0] - lastBias))
+#define STEPPER2_Kp   (60 * (targetTen[1] - (double) tensionLL) - 15 * (targetTen[1] - (double) tensionLL - lastBias))
 
 //rs485
 #define HRS485_1_USART  &huart2

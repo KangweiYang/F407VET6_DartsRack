@@ -103,6 +103,7 @@ void ServoGraspDart(void) {
         ServoSet(SERVO_GRASP, 97, 300);                         //Grasp
         ServoSet(SERVO_UP_DOWN, 102, 2500);                      //Start down
         StepperStop(STEPPER4);
+        /*
         while((tension1 != targetTen[0]) || (tensionL != targetTen[1])){
             tension1 = RS485_1_GetTension();
             tensionL = RS485_2_GetTension();
@@ -110,6 +111,7 @@ void ServoGraspDart(void) {
         }
         stepper0Flag = 0;
         stepper1Flag = 0;
+         */
         ServoSet(SERVO_GRASP, 119, 2000);                        //Release
         ServoSet(SERVO_UP_DOWN, 18, 1);                      //Start up
 

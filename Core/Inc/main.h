@@ -74,22 +74,24 @@ void SystemClock_Config(void);
 #define STEPPER3_DIR_GPIO_Port GPIOC
 #define STEPPER4_DIR_Pin GPIO_PIN_3
 #define STEPPER4_DIR_GPIO_Port GPIOC
-#define HALL_BACK_SW_Pin GPIO_PIN_4
-#define HALL_BACK_SW_GPIO_Port GPIOA
-#define HALL_LEFT_SW_Pin GPIO_PIN_5
-#define HALL_LEFT_SW_GPIO_Port GPIOA
-#define HALL_RIGHT_SW_Pin GPIO_PIN_5
-#define HALL_RIGHT_SW_GPIO_Port GPIOC
+#define HALL_BACK_SW___Pin GPIO_PIN_4
+#define HALL_BACK_SW___GPIO_Port GPIOA
+#define HALL_LEFT_SW___Pin GPIO_PIN_5
+#define HALL_LEFT_SW___GPIO_Port GPIOA
+#define HALL_RIGHT_SW___Pin GPIO_PIN_5
+#define HALL_RIGHT_SW___GPIO_Port GPIOC
 #define RS485_2_RX_TX_CONTROL_Pin GPIO_PIN_15
 #define RS485_2_RX_TX_CONTROL_GPIO_Port GPIOE
 #define DART_STOP_SW_Pin GPIO_PIN_14
 #define DART_STOP_SW_GPIO_Port GPIOB
-#define HALL_RIGHT_SW__Pin GPIO_PIN_13
-#define HALL_RIGHT_SW__GPIO_Port GPIOD
-#define HALL_LEFT_SW__Pin GPIO_PIN_14
-#define HALL_LEFT_SW__GPIO_Port GPIOD
-#define HALL_BACK_SW__Pin GPIO_PIN_15
-#define HALL_BACK_SW__GPIO_Port GPIOD
+#define YAW_STEPPER_PUL_Pin GPIO_PIN_12
+#define YAW_STEPPER_PUL_GPIO_Port GPIOD
+#define HALL_RIGHT_SW_Pin GPIO_PIN_13
+#define HALL_RIGHT_SW_GPIO_Port GPIOD
+#define HALL_LEFT_SW_Pin GPIO_PIN_14
+#define HALL_LEFT_SW_GPIO_Port GPIOD
+#define HALL_BACK_SW_Pin GPIO_PIN_15
+#define HALL_BACK_SW_GPIO_Port GPIOD
 #define SW10_Pin GPIO_PIN_9
 #define SW10_GPIO_Port GPIOC
 #define SONIC_RANGE_TRIG1_Pin GPIO_PIN_8
@@ -106,7 +108,7 @@ void SystemClock_Config(void);
 //stepper
 #define STEPPER1    &htim1, TIM_CHANNEL_1   //PA8
 #define STEPPER2    &htim3, TIM_CHANNEL_1   //PA6
-#define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
+//#define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
 #define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
 #define MOTOR_NUM  6
 #define RX_BUFF_LENGTH  10000
@@ -118,6 +120,8 @@ void SystemClock_Config(void);
 
 //print define
 #define ADC_DMA_INFO    0
+#define HALL_INFO   0
+#define TEN_INFO    1
 
 //stepper1,2 dir
 #define STEPPER_INFO    1
@@ -128,8 +132,8 @@ void SystemClock_Config(void);
 #define STEPPER1_2_DIR  -1
 
 extern double lastBias;
-#define STEPPER1_Kp   (20 * ((double) tension1 - targetTen[0]) - 10 * ((double) tension1 - targetTen[0] - lastBias))
-#define STEPPER2_Kp   (60 * (targetTen[1] - (double) tensionLL) - 15 * (targetTen[1] - (double) tensionLL - lastBias))
+#define STEPPER1_Kp   (-200 * ((double) tension1 - targetTen[0]) + 100 * ((double) tension1 - targetTen[0] - lastBias))
+#define STEPPER2_Kp   (-500 * (targetTen[1] - (double) tensionLL) + 200 * (targetTen[1] - (double) tensionLL - lastBias))
 
 //rs485
 #define HRS485_1_USART  &huart2
@@ -139,6 +143,10 @@ extern double lastBias;
 
 //shoot progress
 #define SHOOT_INFO  1
+#define LOAD_SPEED  3000
+#define RELEASE_SPEED   -3500
+#define SHOOT_SPEED -3000
+#define WAIT_TIMES  4
 
 #define TENSION1_DATA_ADDRESS    4
 #define TENSION2_DATA_ADDRESS    3

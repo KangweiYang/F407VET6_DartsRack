@@ -61,6 +61,10 @@ int motor0Flag = 0, motor1Flag = 0, motor2Flag = 0, motor3Flag = 0, stepper0Flag
 int stepper0WaitingToStopFlag = 0, stepper1WaitingToStopFlag = 0;
 uint8_t USART1RxBuf[RX_BUFF_LENGTH];
 
+uint32_t sonicRangeUp = 0, sonicRangeDown = 0;     //ms * 34 (cm/ms)
+
+int tensionControlFlag = 0;
+
 int IntArrayComp(int *array, int equal, int len){
     int wholeEqual = 0;
     for (int i = 0; i < len; ++i){
@@ -152,7 +156,7 @@ void ShootOneDart(int dartSerial) {
     DartRelease();
     stepper0Flag = 1;
     stepper1Flag = 1;
-
+    tensionControlFlag = 1;
     {
         int prevTen1[WAIT_TIMES], prevTenL[WAIT_TIMES], i = 0;
         while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
@@ -175,6 +179,7 @@ void ShootOneDart(int dartSerial) {
             printf("\n");
         }
     }
+    tensionControlFlag = 0;
     stepper0Flag = 0;
     stepper1Flag = 0;
     DartShoot();
@@ -256,17 +261,13 @@ void CubeMXInit(void){
 
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
-//    MX_DMA_Init();
-//    MX_ADC1_Init();
     MX_CAN1_Init();
     MX_USART1_UART_Init();
     MX_TIM2_Init();
     MX_TIM1_Init();
     MX_TIM3_Init();
     MX_TIM4_Init();
-//    MX_TIM7_Init();
     MX_TIM9_Init();
-    MX_TIM10_Init();
     MX_I2C1_Init();
     MX_TIM6_Init();
     MX_CAN2_Init();
@@ -274,6 +275,10 @@ void CubeMXInit(void){
     MX_USART3_UART_Init();
     MX_TIM12_Init();
     MX_USB_OTG_FS_PCD_Init();
+    MX_TIM10_Init();
+    MX_UART4_Init();
+    MX_UART5_Init();
+    MX_USART6_UART_Init();
 }
 
 /**
@@ -286,74 +291,14 @@ int main(void) {
     printf("hello\n");
     UserInit();
 
-
-
-//    ShootOneDart(1);
-
-
-    while(1){
+    while(1) {
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
-        if(shootFlag){
+        if (shootFlag) {
             ShootOneDart(shootFlag);
             shootFlag = 0;
         }
-//        HAL_Delay(1000);
-
-//        if(tension1 == targetTen[0]){
-//            StepperSetSpeed(STEPPER1, 0);
-//            stepper0Speed = 0;
-//        }
-//        else if(tension1 < targetTen[0] && stepper0Speed >= 0){
-//            for (int i = 0; i > -(targetTen[0] - tension1) * 21; i -= 10) {
-//                StepperSetSpeed(STEPPER1, i);
-//                stepper0Speed = i;
-//                HAL_Delay(4);
-//            }
-//        }
-//        else if(tension1 > targetTen[0] && stepper0Speed <= 0) {
-//            for (int i = 0; i < (tension1 - targetTen[0]) * 21; i += 10) {
-//                StepperSetSpeed(STEPPER1, i);
-//                stepper0Speed = i;
-//                HAL_Delay(4);
-//            }
-//        }
-
     }
-
-/*
-    while (1) {
-        tension1 = RS485_1_GetTension();
-        tensionL = RS485_2_GetTension();
-        for (int i = 0; i < 50; ++i) {
-            StepperSetSpeed(STEPPER1, 10 * i);
-            StepperSetSpeed(STEPPER2, 10 * i);
-            StepperSetSpeed(STEPPER3, 10 * i);
-            StepperSetSpeed(STEPPER4, 10 * i);
-            HAL_Delay(1);
-        }
-        HAL_Delay(1000);
-
-        for (int i = 0; i < 50; ++i) {
-            StepperSetSpeed(STEPPER1, -10 * i);
-            StepperSetSpeed(STEPPER2, -10 * i);
-            StepperSetSpeed(STEPPER3, -10 * i);
-            StepperSetSpeed(STEPPER4, -10 * i);
-            HAL_Delay(1);
-        }
-        HAL_Delay(1000);
-    }
-
-*/
-//        printf("PA0: %d  ", __HAL_TIM_GET_COMPARE(&htim2, TIM_CHANNEL_1));
-//        printf("PA1: %d  \n", __HAL_TIM_GET_COMPARE(&htim2, TIM_CHANNEL_2));
-//        printf("PA2: %d  ", __HAL_TIM_GET_COMPARE(&htim2, TIM_CHANNEL_3));
-//        printf("PA3: %d\n", __HAL_TIM_GET_COMPARE(&htim2, TIM_CHANNEL_4));
-    HAL_Delay(60);
-//        HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
-//        HAL_Delay(333);
-//        HAL_Delay(333);
-
     /* USER CODE BEGIN 3 */
 }
 
@@ -412,7 +357,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 }
 
 int StrToInt(uint8_t *buf, int16_t startPointer, uint8_t endChar){
-    uint8_t intBuf[20];
+    uint8_t intBuf[50];
     int result = 0;
     if(ContainsAndCopy(buf, &startPointer, endChar, RX_BUFF_LENGTH, intBuf)){
 //        printf("\n");
@@ -529,6 +474,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim->Instance == htim10.Instance) {     //100ms timer
         static uint16_t pointer, couut;
         couut ++;
+        //sonic range
+        if(couut % 2 == 0) {
+            HAL_GPIO_TogglePin(SONIC_RANGE_TRIG1_GPIO_Port, SONIC_RANGE_TRIG1_Pin);
+        }
+        else{
+            HAL_GPIO_TogglePin(SONIC_RANGE_TRIG2_GPIO_Port, SONIC_RANGE_TRIG2_Pin);
+        }
+        //sonic range
         if(couut >= 10){
 #if HALL_INFO
         printf("BACK: %d, LEFT: %d, RIGHT: %d\n", HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin),
@@ -536,7 +489,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin));
 #endif
 #if TEN_INFO
-            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0=: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0]);
+            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown);
             couut = 0;
 #endif
         }
@@ -620,6 +573,36 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 cout7++;
                 printf("ShootTwoDarts %d\n", cout7);
             }
+        }
+    }
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+    if(GPIO_Pin == SONIC_RANGE_ECHO1_Pin) {
+        static uint32_t risingTime;
+        if(HAL_GPIO_ReadPin(SONIC_RANGE_ECHO1_GPIO_Port, SONIC_RANGE_ECHO1_Pin) == GPIO_PIN_SET){
+            risingTime = HAL_GetTick();
+        }
+        else if(risingTime != 0){
+            uint32_t deltaTime = HAL_GetTick() - risingTime;
+            risingTime = 0;
+            if(deltaTime < 12) {
+                sonicRangeUp = deltaTime * 34;
+            }
+        }
+    }
+    if(GPIO_Pin == SONIC_RANGE_ECHO2_Pin) {
+        static uint32_t risingTime;
+        if (HAL_GPIO_ReadPin(SONIC_RANGE_ECHO2_GPIO_Port, SONIC_RANGE_ECHO2_Pin) == GPIO_PIN_SET) {
+            risingTime = HAL_GetTick();
+        } else if (risingTime != 0) {
+            uint32_t deltaTime = HAL_GetTick() - risingTime;
+//            printf("%ld, %ld\n", HAL_GetTick(), risingTime);
+            risingTime = 0;
+            if(deltaTime < 12) {
+                sonicRangeDown = deltaTime * 34;
+            }
+//        }
         }
     }
 }

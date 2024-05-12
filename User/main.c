@@ -1,6 +1,6 @@
 #include "stdlib.h"
 #include "main.h"
-//#include "dma.h"
+#include "dma.h"
 #include "tim.h"
 //#include "adc.h"
 #include "can.h"
@@ -21,6 +21,16 @@
 #include "Library/CAN/Inc/Can.h"
 #include "Library/RS485/Inc/RS485.h"
 #include "Library/SHOOT_PROCESS/Inc/ShootProcess.h"
+
+const uint8_t SetYaw[] = {7, 'S', 'e', 't', 'Y', 'a', 'w'};
+const uint8_t SetTen[] = {7, 'S', 'e', 't', 'T', 'e', 'n'};
+const uint8_t TestShoot[] = {10, 'T', 'e', 's', 't', 'S', 'h', 'o', 'o', 't'};
+const uint8_t AbortShoot[] = {11, 'A', 'b', 'o', 'r', 't', 'S', 'h', 'o', 'o', 't'};
+const uint8_t SetCurYawToZero[] = {16, 'S', 'e', 't', 'C', 'u', 'r', 'Y', 'a', 'w', 'T', 'o', 'Z', 'e', 'r', 'o'};
+const uint8_t ResetFeed[] = {10, 'R', 'e', 's', 'e', 't', 'F', 'e', 'e', 'd'};
+const uint8_t SonicRangeTestSetParas[] = {23, 'S', 'o', 'n', 'i', 'c', 'R', 'a', 'n', 'g', 'e', 'T', 'e', 's', 't', 'S', 'e', 't', 'P', 'a', 'r', 'a', 's'};
+const uint8_t SonicRangeTest[] = {15, 'S', 'o', 'n', 'i', 'c', 'R', 'a', 'n', 'g', 'e', 'T', 'e', 's', 't'};
+const uint8_t ShootTwoDarts[] = {14, 'S', 'h', 'o', 'o', 't', 'T', 'w', 'o', 'D', 'a', 'r', 't', 's'};
 
 int resetFeedCont = -1;
 
@@ -65,6 +75,33 @@ uint32_t sonicRangeUp = 0, sonicRangeDown = 0;     //ms * 34 (cm/ms)
 
 int tensionControlFlag = 0;
 
+int16_t RxPointer = 0;
+int ContainsAndCopy(uint8_t *buf, int16_t *startPointer, uint8_t byteToFind, uint16_t length, uint8_t *copyBuf){
+    if(*startPointer > RX_BUFF_LENGTH)    *startPointer = 0;
+    for (int i = *startPointer; i < length; ++i){
+        if(buf[i] == byteToFind || buf[i] == '\\'){
+            copyBuf[0] = i - *startPointer;
+            *startPointer = i + 1;
+            return 1;
+        }
+        copyBuf[i - *startPointer + 1] = buf[i];
+    }
+    return 0;
+}
+
+int ContainsSubString(uint8_t *buf, uint8_t *stringToFind){
+    for (int i = 0; i < RX_BUFF_LENGTH; ++i){
+        if(buf[i] == stringToFind[1]){
+            for (int j = 0; j < stringToFind[0] - 1; ++j){
+                if(buf[i + j] != stringToFind[j + 1]){
+                    return 0;
+                }
+            }
+            return 1;
+        }
+    }
+    return 0;
+}
 int IntArrayComp(int *array, int equal, int len){
     int wholeEqual = 0;
     for (int i = 0; i < len; ++i){
@@ -140,7 +177,9 @@ void UserInit(void) {
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
     }
-    HAL_UART_Receive_IT(&huart1, USART1RxBuf, RX_BUFF_LENGTH);
+//    HAL_DMA_Init(&hdma2);
+//    HAL_UART_Receive_IT(&huart1, USART1RxBuf, RX_BUFF_LENGTH);
+    HAL_UART_Receive_DMA(&huart1, USART1RxBuf, RX_BUFF_LENGTH);
 }
 
 void ShootOneDart(int dartSerial) {
@@ -261,6 +300,7 @@ void CubeMXInit(void){
 
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
+    MX_DMA_Init();
     MX_CAN1_Init();
     MX_USART1_UART_Init();
     MX_TIM2_Init();
@@ -279,6 +319,7 @@ void CubeMXInit(void){
     MX_UART4_Init();
     MX_UART5_Init();
     MX_USART6_UART_Init();
+    MX_TIM7_Init();
 }
 
 /**
@@ -302,49 +343,11 @@ int main(void) {
     /* USER CODE BEGIN 3 */
 }
 
-int16_t RxPointer = 0;
- int ContainsAndCopy(uint8_t *buf, int16_t *startPointer, uint8_t byteToFind, uint16_t length, uint8_t *copyBuf){
-    if(*startPointer > RX_BUFF_LENGTH)    *startPointer = 0;
-    for (int i = *startPointer; i < length; ++i){
-        if(buf[i] == byteToFind || buf[i] == '\\'){
-            copyBuf[0] = i - *startPointer;
-            *startPointer = i + 1;
-            return 1;
-        }
-        copyBuf[i - *startPointer + 1] = buf[i];
-    }
-    return 0;
-}
-
-int ContainsSubString(uint8_t *buf, uint8_t *stringToFind){
-    for (int i = 0; i < RX_BUFF_LENGTH; ++i){
-        if(buf[i] == stringToFind[1]){
-            for (int j = 0; j < stringToFind[0] - 1; ++j){
-                if(buf[i + j] != stringToFind[j + 1]){
-                    return 0;
-                }
-            }
-            return 1;
-        }
-    }
-    return 0;
-}
-
-
-const uint8_t SetYaw[] = {7, 'S', 'e', 't', 'Y', 'a', 'w'};
-const uint8_t SetTen[] = {7, 'S', 'e', 't', 'T', 'e', 'n'};
-const uint8_t TestShoot[] = {10, 'T', 'e', 's', 't', 'S', 'h', 'o', 'o', 't'};
-const uint8_t AbortShoot[] = {11, 'A', 'b', 'o', 'r', 't', 'S', 'h', 'o', 'o', 't'};
-const uint8_t SetCurYawToZero[] = {16, 'S', 'e', 't', 'C', 'u', 'r', 'Y', 'a', 'w', 'T', 'o', 'Z', 'e', 'r', 'o'};
-const uint8_t ResetFeed[] = {10, 'R', 'e', 's', 'e', 't', 'F', 'e', 'e', 'd'};
-const uint8_t SonicRangeTestSetParas[] = {23, 'S', 'o', 'n', 'i', 'c', 'R', 'a', 'n', 'g', 'e', 'T', 'e', 's', 't', 'S', 'e', 't', 'P', 'a', 'r', 'a', 's'};
-const uint8_t SonicRangeTest[] = {15, 'S', 'o', 'n', 'i', 'c', 'R', 'a', 'n', 'g', 'e', 'T', 'e', 's', 't'};
-const uint8_t ShootTwoDarts[] = {14, 'S', 'h', 'o', 'o', 't', 'T', 'w', 'o', 'D', 'a', 'r', 't', 's'};
-/* USER CODE END 3 */
+/*
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if(huart-> Instance == huart1.Instance ) {
         uint8_t rxHandleBuf[RX_BUFF_LENGTH];
-        for (int i = 0; i < 10; ++i){
+        for (int i = 0; i < 50; ++i){
             printf("%c", rxHandleBuf[i]);
         }
         printf("\n");
@@ -353,8 +356,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
                 printf("SetYaw\n");
             }
         }
+        HAL_UART_AbortReceive_IT(&huart1);
+        HAL_UART_Receive_IT(&huart1, USART1RxBuf, RX_BUFF_LENGTH);
     }
 }
+ */
+
+
+/* USER CODE END 3 */
 
 int StrToInt(uint8_t *buf, int16_t startPointer, uint8_t endChar){
     uint8_t intBuf[50];
@@ -489,7 +498,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin));
 #endif
 #if TEN_INFO
-            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown);
+//            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown);
+/*
+            for (int i = 0; i < 500; ++i){
+                printf("%c", USART1RxBuf[i]);
+            }
+            printf("\n");
+*/
             couut = 0;
 #endif
         }
@@ -498,7 +513,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             resetFeedCont = -1;
             StepperSetSpeed(STEPPER4, 0);
         }
-        HAL_UART_Receive_IT(&huart1, USART1RxBuf, RX_BUFF_LENGTH);
         uint8_t rxHandleBuf[RX_BUFF_LENGTH];
         if (ContainsAndCopy(USART1RxBuf, &RxPointer, '\n', RX_BUFF_LENGTH, rxHandleBuf)) {
             if (ContainsSubString(rxHandleBuf + 1, SetYaw)) {

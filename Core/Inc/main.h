@@ -134,8 +134,8 @@ void SystemClock_Config(void);
 #define STEPPER1_2_DIR  -1
 
 extern double lastBias;
-#define STEPPER1_Kp   (-300 * ((double) tension1 - targetTen[0]) + 150 * ((double) tension1 - targetTen[0] - lastBias))
-#define STEPPER2_Kp   (-600 * (targetTen[1] - (double) tensionLL) + 200 * (targetTen[1] - (double) tensionLL - lastBias))
+#define STEPPER1_Kp   (-200 * ((double) tension1 - targetTen[0]) + 100 * ((double) tension1 - targetTen[0] - lastBias))
+#define STEPPER2_Kp   (-450 * (targetTen[1] - (double) tensionLL) + 150 * (targetTen[1] - (double) tensionLL - lastBias))
 
 //rs485
 #define HRS485_1_USART  &huart2
@@ -146,9 +146,9 @@ extern double lastBias;
 //shoot progress
 #define SHOOT_INFO  1
 #define LOAD_SPEED  3000
-#define RELEASE_SPEED   -3200
+#define RELEASE_SPEED   -3400
 #define SHOOT_SPEED -3000
-#define WAIT_TIMES  3
+#define WAIT_TIMES  2
 
 #define TENSION1_DATA_ADDRESS    4
 #define TENSION2_DATA_ADDRESS    3

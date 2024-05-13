@@ -112,7 +112,7 @@ void ServoGraspDart(void) {
         stepper0Flag = 0;
         stepper1Flag = 0;
          */
-        ServoSet(SERVO_GRASP, 119, 2000);                        //Release
+        ServoSet(SERVO_GRASP, 119, 500);                        //Release
         ServoSet(SERVO_UP_DOWN, 18, 1);                      //Start up
 
     }

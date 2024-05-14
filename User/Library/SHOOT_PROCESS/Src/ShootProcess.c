@@ -32,7 +32,7 @@ void DartLoad(void) {
 #if SHOOT_INFO
     printf("DART LOAD OK!\n");
 #endif
-    HAL_Delay(100);
+//    HAL_Delay(100);
     motor0Flag = 0;
     motor1Flag = 0;
     motor2Flag = 0;

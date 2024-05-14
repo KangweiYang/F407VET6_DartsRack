@@ -37,7 +37,8 @@ int resetFeedCont = -1;
 int PWMtest = 75;
 double posKp = 0.15, posKi = 0.00, posKd = 1;
 double velKp = 150, velKi = 10;
-double posKpStepper = 0.15, posKiStepper = 0.00, posKdStepper = 1;
+double posKpStepper0 = STEPPER1BIGKP, posKiStepper0 = 0.00, posKdStepper0 = STEPPER1BIGKD;
+double posKpStepper1 = STEPPER2BIGKP, posKiStepper1 = 0.00, posKdStepper1 = STEPPER2BIGKD;
 double velKpStepper = 0, velKiStepper = 10000;
 
 int32_t tension1 = 0;
@@ -435,10 +436,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         }
         if (cont == 10) {
             if(stepper0Flag == 0) StepperSetSpeed(STEPPER1, 0);
-            else if (stepper0Flag && tension1 <= 10000 && tension1 >= -10000) {
+            else if (stepper0Flag && tension1 <= 600 && tension1 >= -600) {
 //            IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
                 StepperStart(STEPPER1);
                 static double lastBias;
+                if(((double) tension1 - targetTen[0]) <= STEPPER_CHANGE_TO_SMALL_K && ((double) tension1 - targetTen[0]) >= -STEPPER_CHANGE_TO_SMALL_K){
+                    posKpStepper0 = STEPPER1SMALLKP;
+                    posKdStepper0 = STEPPER1SMALLKD;
+                }
+                else {
+                    posKpStepper0 = STEPPER1BIGKP;
+                    posKdStepper0 = STEPPER1BIGKD;
+                }
                 if(STEPPER1_Kp < -STEPPER1_2_MAX_PUL) {
                     StepperSetSpeed(STEPPER1, -STEPPER1_2_MAX_PUL);
                     stepper0Speed = -STEPPER1_2_MAX_PUL;
@@ -447,7 +456,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     StepperSetSpeed(STEPPER1, STEPPER1_2_MAX_PUL);
                     stepper0Speed = STEPPER1_2_MAX_PUL;
                 }
-                else    {
+                else {
                     StepperSetSpeed(STEPPER1, STEPPER1_Kp);
                     stepper0Speed = STEPPER1_Kp;
                 }
@@ -455,10 +464,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //            printf("%lf\n", STEPPER1_Kp);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed);
             }
+            else if (tension1 > 600)    StepperSetSpeed(STEPPER1, 0);
             if(stepper1Flag == 0) StepperSetSpeed(STEPPER2, 0);
             else if (stepper1Flag && tensionL <= 10000 && tensionL >= -10000) {
                 int32_t tensionLL = tensionL;
                 static double lastBias;
+                if((targetTen[1] - (double) tensionLL) <= STEPPER_CHANGE_TO_SMALL_K && (targetTen[1] - (double) tensionLL) >= -STEPPER_CHANGE_TO_SMALL_K){
+                    posKpStepper1 = STEPPER2SMALLKP;
+                    posKdStepper1 = STEPPER2SMALLKD;
+                } else{
+                    posKpStepper1 = STEPPER2BIGKP;
+                    posKdStepper1 = STEPPER2BIGKD;
+                }
 //            IncrementalPI(5, velKpStepper, velKiStepper, tensionL, targetTen[1]);
                 StepperStart(STEPPER2);
                 if(STEPPER2_Kp < -STEPPER1_2_MAX_PUL) {
@@ -473,10 +490,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     StepperSetSpeed(STEPPER2, STEPPER2_Kp);
                     stepper1Speed = STEPPER2_Kp;
                 }
-                lastBias = (double) tensionL - targetTen[1];
+//                lastBias = (double) tensionL - targetTen[1];
+                lastBias = targetTen[1] - (double) tensionLL;
 //            printf("%ld, %lf = -20 * (%lf - %ld)\n", tensionL, STEPPER2_Kp, targetTen[1], tensionLL);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionLL, stepper0Speed, stepper1Speed);
             }
+            else if (tensionL > 600)    StepperSetSpeed(STEPPER2, 0);
             cont = 0;
         }
     }
@@ -498,7 +517,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin));
 #endif
 #if TEN_INFO
-            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown);
+            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld, Kp: %.1lf, %.1lf, Kd: %.1lf, %.1lf\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown, posKpStepper0, posKpStepper1, posKdStepper0, posKdStepper1);
 /*
             for (int i = 0; i < 500; ++i){
                 printf("%c", USART1RxBuf[i]);

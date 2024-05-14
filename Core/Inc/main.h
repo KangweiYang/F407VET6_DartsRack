@@ -110,6 +110,16 @@ void SystemClock_Config(void);
 //stepper
 #define STEPPER1    &htim1, TIM_CHANNEL_1   //PA8
 #define STEPPER2    &htim3, TIM_CHANNEL_1   //PA6
+#define STEPPER_CHANGE_TO_SMALL_K   5
+#define STEPPER1BIGKP 450
+#define STEPPER1BIGKD 150
+#define STEPPER2BIGKP 450
+#define STEPPER2BIGKD 150
+#define STEPPER1SMALLKP 150
+#define STEPPER1SMALLKD 50
+#define STEPPER2SMALLKP 150
+#define STEPPER2SMALLKD 50
+
 //#define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
 #define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
 #define MOTOR_NUM  6
@@ -128,14 +138,16 @@ void SystemClock_Config(void);
 //stepper1,2 dir
 #define STEPPER_INFO    1
 
-#define STEPPER1_2_MAX_PUL  3600
+#define STEPPER1_2_MAX_PUL  2800
 #define STEPPER1_2_MIN_CHANGE   (1200 / 20)
 
 #define STEPPER1_2_DIR  -1
 
 extern double lastBias;
-#define STEPPER1_Kp   (-200 * ((double) tension1 - targetTen[0]) + 100 * ((double) tension1 - targetTen[0] - lastBias))
-#define STEPPER2_Kp   (-450 * (targetTen[1] - (double) tensionLL) + 150 * (targetTen[1] - (double) tensionLL - lastBias))
+extern double posKpStepper0, posKiStepper0, posKdStepper0;
+extern double posKpStepper1, posKiStepper1, posKdStepper1;
+#define STEPPER1_Kp   (-posKpStepper0 * ((double) tension1 - targetTen[0]) + posKdStepper0 * ((double) tension1 - targetTen[0] - lastBias))
+#define STEPPER2_Kp   (-posKpStepper1 * (targetTen[1] - (double) tensionLL) + posKdStepper1 * (targetTen[1] - (double) tensionLL - lastBias))
 
 //rs485
 #define HRS485_1_USART  &huart2

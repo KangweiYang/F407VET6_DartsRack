@@ -79,21 +79,11 @@ void ServoGraspDart(void) {
 //    ServoSet(SERVO_UP_DOWN, 65, 200);
     ServoSet(SERVO_UP_DOWN, 20, 0);                         //STOP up
 
-    uint16_t freq = 50, cont = 0;
     StepperStart(STEPPER4);
     while (HAL_GPIO_ReadPin(DART_STOP_SW_GPIO_Port, DART_STOP_SW_Pin) == GPIO_PIN_SET){
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
-        if(freq < 850) {
-//            cont++;
-//            if (cont == 1) {
-//                cont = 0;
-                freq += 10;
-
-//            }
-            StepperSetSpeed(STEPPER4, freq);
-        }
-//        printf("freq= %d\n", freq);
+        StepperSetSpeed(STEPPER4, 850);
     }
     if (HAL_GPIO_ReadPin(DART_STOP_SW_GPIO_Port, DART_STOP_SW_Pin) == GPIO_PIN_RESET) {
         StepperSetSpeed(STEPPER4, -500);
@@ -101,7 +91,7 @@ void ServoGraspDart(void) {
         printf("GRASP\n");
 #endif
         ServoSet(SERVO_GRASP, 97, 300);                         //Grasp
-        ServoSet(SERVO_UP_DOWN, 102, 2500);                      //Start down
+        ServoSet(SERVO_UP_DOWN, 102, 2200);                      //Start down
         StepperStop(STEPPER4);
         /*
         while((tension1 != targetTen[0]) || (tensionL != targetTen[1])){

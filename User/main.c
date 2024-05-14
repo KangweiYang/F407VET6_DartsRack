@@ -441,10 +441,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 StepperStart(STEPPER1);
                 static double lastBias;
                 if(((double) tension1 - targetTen[0]) <= STEPPER_CHANGE_TO_SMALL_K && ((double) tension1 - targetTen[0]) >= -STEPPER_CHANGE_TO_SMALL_K){
-                    posKpStepper0 = STEPPER1SMALLKP;
-                    posKdStepper0 = STEPPER1SMALLKD;
+                    if(targetTen[0] < 420) {
+                        posKpStepper0 = STEPPER1SMALLKP;
+                        posKdStepper0 = STEPPER1SMALLKD;
+                    }
+                    else{
+                        posKpStepper0 = STEPPER1SMALLSMALLKP;
+                        posKdStepper0 = STEPPER1SMALLSMALLKD;
+                    }
                 }
-                else {
+                else if(((double) tension1 - targetTen[0]) > 2 * STEPPER_CHANGE_TO_SMALL_K || ((double) tension1 - targetTen[0]) < -2 * STEPPER_CHANGE_TO_SMALL_K) {
                     posKpStepper0 = STEPPER1BIGKP;
                     posKdStepper0 = STEPPER1BIGKD;
                 }
@@ -470,9 +476,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 int32_t tensionLL = tensionL;
                 static double lastBias;
                 if((targetTen[1] - (double) tensionLL) <= STEPPER_CHANGE_TO_SMALL_K && (targetTen[1] - (double) tensionLL) >= -STEPPER_CHANGE_TO_SMALL_K){
-                    posKpStepper1 = STEPPER2SMALLKP;
-                    posKdStepper1 = STEPPER2SMALLKD;
-                } else{
+                    if(targetTen[1] < 420) {
+                        posKpStepper1 = STEPPER2SMALLKP;
+                        posKdStepper1 = STEPPER2SMALLKD;
+                    } else{
+                        posKpStepper1 = STEPPER2SMALLSMALLKP;
+                        posKdStepper1 = STEPPER2SMALLSMALLKD;
+                    }
+                } else if((targetTen[1] - (double) tensionLL) > 2 * STEPPER_CHANGE_TO_SMALL_K || (targetTen[1] - (double) tensionLL) < -2 * STEPPER_CHANGE_TO_SMALL_K){
                     posKpStepper1 = STEPPER2BIGKP;
                     posKdStepper1 = STEPPER2BIGKD;
                 }

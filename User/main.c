@@ -590,6 +590,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 }
             } else if (ContainsSubString(rxHandleBuf + 1, SetTen)) {
                 contFromLastUart = 1;
+                shootFlag = 0;
                 switch (rxHandleBuf[8]) {
                     case '1':
                         furTarTen[0] = StrToInt(rxHandleBuf, 10, ')');
@@ -620,11 +621,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             } else if (ContainsSubString(rxHandleBuf, SetCurYawToZero)) {
                 static int cout3;
                 cout3++;
+                contFromLastUart = 1;
+                shootFlag = 0;
                 printf("SetCurYawToZero %d\n", cout3);
                 targetYawPul = furTarYaw[0];
             } else if (ContainsSubString(rxHandleBuf, ResetFeed)) {
                 static int cout4;
                 cout4++;
+                contFromLastUart = 1;
+                shootFlag = 0;
                 printf("ResetFeed %d\n", cout4);
                 StepperSetSpeed(STEPPER4, -500);
                 StepperStart(STEPPER4);

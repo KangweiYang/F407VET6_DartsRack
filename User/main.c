@@ -36,6 +36,9 @@ int resetFeedCont = -1;
 
 int left3508StopCont = -1, right3508StopCont = -1, releaseFlag = 0;
 
+uint64_t contFromLastUart = 0;
+int sonicRangeUpCloseFlag = 1, sonicRangeDownOpenFlag = 0;
+
 int PWMtest = 75;
 double posKp = 0.15, posKi = 0.00, posKd = 1;
 double velKp = 150, velKi = 10;
@@ -192,7 +195,6 @@ void ShootOneDart(int dartSerial) {
     targetTen[1] = furTarTen[dartSerial - 1];
     if(dartSerial == 1) targetYawPul = furTarYaw[0];
     else    targetYawPul = -furTarYaw[dartSerial - 1] + furTarYaw[dartSerial];
-    HAL_Delay(1000);
     ServoGraspDart();
     DartLoad();
     DartRelease();
@@ -201,9 +203,9 @@ void ShootOneDart(int dartSerial) {
     tensionControlFlag = 1;
     {
         int prevTen1[WAIT_TIMES], prevTenL[WAIT_TIMES], i = 0;
-        while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
+        while (((tension1 != targetTen[0]) || (tensionL != targetTen[1])
             || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
-            || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)) {
+            || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)) || sonicRangeUpCloseFlag) {
             stepper0Flag = 1;
             stepper1Flag = 1;
             prevTen1[i] = tension1;
@@ -340,9 +342,10 @@ int main(void) {
     while(1) {
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
-        if (shootFlag) {
+        if (sonicRangeDownOpenFlag && contFromLastUart > CONT_TO_READY_TO_SHOOT && furTarTen[1] != 0 && shootFlag < 4){
+            shootFlag++;
+            printf("shootFlag: %d\n", shootFlag);
             ShootOneDart(shootFlag);
-            shootFlag = 0;
         }
     }
     /* USER CODE BEGIN 3 */
@@ -516,7 +519,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     }
     if (htim->Instance == htim10.Instance) {     //100ms timer
         static uint16_t pointer, couut;
-        couut ++;
+        couut++;
+        if(contFromLastUart > 0)
+            contFromLastUart++;
         if(left3508StopCont > 0){
             left3508StopCont--;
         }
@@ -545,7 +550,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin));
 #endif
 #if TEN_INFO
-            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld, Kp: %.1lf, %.1lf, Kd: %.1lf, %.1lf\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown, posKpStepper0, posKpStepper1, posKdStepper0, posKdStepper1);
+//            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld, Kp: %.1lf, %.1lf, Kd: %.1lf, %.1lf, UpClose: %d, DownOpen: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown, posKpStepper0, posKpStepper1, posKdStepper0, posKdStepper1, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
+            printf("sonicRangeUp: %ld, sonicRangeDown: %ld,UpClose: %d, DownOpen: %d\n", sonicRangeUp, sonicRangeDown, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
 /*
             for (int i = 0; i < 500; ++i){
                 printf("%c", USART1RxBuf[i]);
@@ -563,6 +569,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         uint8_t rxHandleBuf[RX_BUFF_LENGTH];
         if (ContainsAndCopy(USART1RxBuf, &RxPointer, '\n', RX_BUFF_LENGTH, rxHandleBuf)) {
             if (ContainsSubString(rxHandleBuf + 1, SetYaw)) {
+                contFromLastUart = 1;
                 switch (rxHandleBuf[8]) {
                     case '1':
                         furTarYaw[0] = StrToInt(rxHandleBuf, 10, ')');
@@ -582,6 +589,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                         break;
                 }
             } else if (ContainsSubString(rxHandleBuf + 1, SetTen)) {
+                contFromLastUart = 1;
                 switch (rxHandleBuf[8]) {
                     case '1':
                         furTarTen[0] = StrToInt(rxHandleBuf, 10, ')');
@@ -651,6 +659,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
                 sonicRangeUp = deltaTime * 34;
             }
         }
+        static uint32_t lastSonicRangeUp;
+        if(sonicRangeUp < 50 && lastSonicRangeUp > 100){
+            sonicRangeUpCloseFlag = 1;
+        }
+        if(sonicRangeUp > 100){
+            sonicRangeUpCloseFlag = 0;
+        }
+        lastSonicRangeUp = sonicRangeUp;
     }
     if(GPIO_Pin == SONIC_RANGE_ECHO2_Pin) {
         static uint32_t risingTime;
@@ -665,10 +681,20 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
             }
 //        }
         }
+        static uint32_t lastSonicRangeDown;
+        if(lastSonicRangeDown < 50 && sonicRangeDown > 100){
+            sonicRangeDownOpenFlag = 1;
+        }
+        if(sonicRangeDown < 50){
+            sonicRangeDownOpenFlag = 0;
+        }
+        lastSonicRangeDown = sonicRangeDown;
     }
-    if(GPIO_Pin == HALL_BACK_SW_Pin){
-
+    if(GPIO_Pin == SONIC_RANGE_ECHO2_Pin) {
     }
+//    if(GPIO_Pin == HALL_BACK_SW_Pin){
+//
+//    }
     if(GPIO_Pin == HALL_LEFT_SW_Pin){
         printf("LEFT_HALL_EXTI\n");
         if(targetVel[1] == RESET_SPEED){

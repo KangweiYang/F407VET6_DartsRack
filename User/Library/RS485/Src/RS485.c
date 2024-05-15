@@ -60,8 +60,10 @@ int32_t RS485_1_GetTension(void){
     printf("\n");
 #endif
     RS485SendState(1);
+    HAL_Delay(5);
     HAL_UART_Transmit(HRS485_1_USART, rs4851GetTensionBuffer, 8, 25);
     RS485ReceiveState(1);
+    HAL_Delay(5);
     HAL_UART_Receive(HRS485_1_USART, rs4851data, 11, 30);
     if(rs4851data[0] == 0x03 && rs4851data[1] == 0x04) tension1DataAddress = 2;
     else if(rs4851data[0] == 0x01 && rs4851data[1] == 0x03 && rs4851data[2] == 0x04) tension1DataAddress = 3;
@@ -101,8 +103,10 @@ int32_t RS485_2_GetTension(void){
     printf("\n");
 #endif
     RS485SendState(2);
+    HAL_Delay(5);
     HAL_UART_Transmit(HRS485_2_USART, rs4852GetTensionBuffer, 8, 25);
     RS485ReceiveState(2);
+    HAL_Delay(5);
     HAL_UART_Receive(HRS485_2_USART, rs4852data, 9, 30);
     if(rs4852data[0] == 0x03 && rs4852data[1] == 0x04) tension2DataAddress = 2;
     else if(rs4852data[0] == 0x01 && rs4852data[1] == 0x03 && rs4852data[2] == 0x04) tension2DataAddress = 3;

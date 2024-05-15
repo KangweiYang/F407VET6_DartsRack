@@ -34,6 +34,8 @@ const uint8_t ShootTwoDarts[] = {14, 'S', 'h', 'o', 'o', 't', 'T', 'w', 'o', 'D'
 
 int resetFeedCont = -1;
 
+int left3508StopCont = -1, right3508StopCont = -1, releaseFlag = 0;
+
 int PWMtest = 75;
 double posKp = 0.15, posKi = 0.00, posKd = 1;
 double velKp = 150, velKi = 10;
@@ -202,6 +204,8 @@ void ShootOneDart(int dartSerial) {
         while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
             || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
             || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)) {
+            stepper0Flag = 1;
+            stepper1Flag = 1;
             prevTen1[i] = tension1;
             tension1 = RS485_1_GetTension();
             prevTenL[i] = tensionL;
@@ -436,7 +440,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         }
         if (cont == 10) {
             if(stepper0Flag == 0) StepperSetSpeed(STEPPER1, 0);
-            else if (stepper0Flag && tension1 <= 600 && tension1 >= -600) {
+            else if (stepper0Flag && tension1 <= 600 && tension1 >= 5) {
 //            IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
                 StepperStart(STEPPER1);
                 static double lastBias;
@@ -472,7 +476,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             }
             else if (tension1 > 600)    StepperSetSpeed(STEPPER1, 0);
             if(stepper1Flag == 0) StepperSetSpeed(STEPPER2, 0);
-            else if (stepper1Flag && tensionL <= 10000 && tensionL >= -10000) {
+            else if (stepper1Flag && tensionL <= 600 && tensionL >= 5) {
                 int32_t tensionLL = tensionL;
                 static double lastBias;
                 if((targetTen[1] - (double) tensionLL) <= STEPPER_CHANGE_TO_SMALL_K && (targetTen[1] - (double) tensionLL) >= -STEPPER_CHANGE_TO_SMALL_K){
@@ -513,6 +517,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim->Instance == htim10.Instance) {     //100ms timer
         static uint16_t pointer, couut;
         couut ++;
+        if(left3508StopCont > 0){
+            left3508StopCont--;
+        }
+        else if(left3508StopCont == 0){
+            left3508StopCont--;
+            targetVel[1] = 0;
+        }
+        if(right3508StopCont > 0){
+            right3508StopCont--;
+        } else if(right3508StopCont == 0){
+            right3508StopCont--;
+            targetVel[3] = 0;
+        }
         //sonic range
         if(couut % 2 == 0) {
             HAL_GPIO_TogglePin(SONIC_RANGE_TRIG1_GPIO_Port, SONIC_RANGE_TRIG1_Pin);
@@ -647,6 +664,31 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
                 sonicRangeDown = deltaTime * 34;
             }
 //        }
+        }
+    }
+    if(GPIO_Pin == HALL_BACK_SW_Pin){
+
+    }
+    if(GPIO_Pin == HALL_LEFT_SW_Pin){
+        printf("LEFT_HALL_EXTI\n");
+        if(targetVel[1] == RESET_SPEED){
+            targetVel[1] = 0;
+//        } else if(targetVel[1] == -RESET_SPEED){
+//            targetVel[1] = 0;
+        }
+        if(releaseFlag) {
+            left3508StopCont = 1;
+        }
+    }
+    if(GPIO_Pin == HALL_RIGHT_SW_Pin){
+        printf("RIGHT_HALL_EXTI\n");
+        if(targetVel[3] == RESET_SPEED){
+            targetVel[3] = 0;
+//        } else if (targetVel[3] == -RESET_SPEED){
+//            targetVel[3] = 0;
+        }
+        if(releaseFlag) {
+            right3508StopCont = 1;
         }
     }
 }

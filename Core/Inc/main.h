@@ -88,10 +88,13 @@ void SystemClock_Config(void);
 #define YAW_STEPPER_PUL_GPIO_Port GPIOD
 #define HALL_RIGHT_SW_Pin GPIO_PIN_13
 #define HALL_RIGHT_SW_GPIO_Port GPIOD
+#define HALL_RIGHT_SW_EXTI_IRQn EXTI15_10_IRQn
 #define HALL_LEFT_SW_Pin GPIO_PIN_14
 #define HALL_LEFT_SW_GPIO_Port GPIOD
+#define HALL_LEFT_SW_EXTI_IRQn EXTI15_10_IRQn
 #define HALL_BACK_SW_Pin GPIO_PIN_15
 #define HALL_BACK_SW_GPIO_Port GPIOD
+#define HALL_BACK_SW_EXTI_IRQn EXTI15_10_IRQn
 #define SW10_Pin GPIO_PIN_9
 #define SW10_GPIO_Port GPIOC
 #define SONIC_RANGE_TRIG1_Pin GPIO_PIN_8
@@ -161,8 +164,9 @@ extern double posKpStepper1, posKiStepper1, posKdStepper1;
 
 //shoot progress
 #define SHOOT_INFO  1
+#define RESET_SPEED 500
 #define LOAD_SPEED  3000
-#define RELEASE_SPEED   -3400
+#define RELEASE_SPEED   -3700
 #define SHOOT_SPEED -3000
 #define WAIT_TIMES  2
 

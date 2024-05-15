@@ -7,6 +7,8 @@
 
 #include "main.h"
 
+void DartReset(void);
+
 void DartLoad(void);
 
 void DartRelease(void);

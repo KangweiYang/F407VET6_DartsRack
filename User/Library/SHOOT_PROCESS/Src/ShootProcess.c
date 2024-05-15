@@ -11,9 +11,24 @@ extern int motor0Flag, motor1Flag, motor2Flag, motor3Flag, stepper0Flag, stepper
 extern double targetVel[4];
 extern int32_t tension1;
 extern int32_t tensionL;
+extern int left3508StopCont, right3508StopCont, releaseFlag;
 
 extern int furTarTen[4];
 extern int furTarYaw[4];
+
+void DartReset(void){
+    motor0Flag = 0;
+    motor1Flag = 1;
+    motor2Flag = 0;
+    motor3Flag = 1;
+    targetVel[1] = RESET_SPEED;
+    targetVel[3] = RESET_SPEED;
+    targetVel[0] = 0;
+    while(targetVel[1] != 0 || targetVel[3] != 0){
+        tension1 = RS485_1_GetTension();
+        tensionL = RS485_2_GetTension();
+    }
+}
 
 void DartLoad(void) {
     motor0Flag = 0;
@@ -49,10 +64,9 @@ void DartRelease(void) {
     targetVel[1] = RELEASE_SPEED;
     targetVel[3] = RELEASE_SPEED;
     targetVel[0] = 0;
+    releaseFlag = 1;
 //    HAL_Delay(delayTime); //2100
-    while (((HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin) != HALL_DETECTED) ||
-            HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin) != HALL_DETECTED) &&
-           (targetVel[1] != 0 || targetVel[3] != 0)) {
+    while (targetVel[1] == RELEASE_SPEED || targetVel[3] == RELEASE_SPEED) {
         if (HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin) != HALL_DETECTED) {
             motor0Flag = 1;
             motor1Flag = 0;
@@ -78,10 +92,18 @@ void DartRelease(void) {
         targetVel[0] = 0;
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
-        if (HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin) == HALL_DETECTED) targetVel[3] = 0;
-
-        if (HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin) == HALL_DETECTED) targetVel[1] = 0;
+        if(right3508StopCont == 0){
+            targetVel[3] = 0;
+        }
+        if(left3508StopCont == 0) {
+            targetVel[1] = 0;
+        }
     }
+    releaseFlag = 0;
+    targetVel[3] = 0;
+    right3508StopCont = -1;
+    targetVel[1] = 0;
+    left3508StopCont = -1;
 #if SHOOT_INFO
     printf("DART RELEASE OK!\n");
 #endif

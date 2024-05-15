@@ -8,6 +8,7 @@
 #include "usart.h"
 #include "main.h"
 #include "../../RS485/Inc/RS485.h"
+#include "../../SHOOT_PROCESS/Inc/ShootProcess.h"
 
 #define SERVO_UP_DOWN   1
 #define SERVO_GRASP     2
@@ -91,8 +92,9 @@ void ServoGraspDart(void) {
         printf("GRASP\n");
 #endif
         ServoSet(SERVO_GRASP, 97, 300);                         //Grasp
-        ServoSet(SERVO_UP_DOWN, 102, 2200);                      //Start down
+        ServoSet(SERVO_UP_DOWN, 102, 1);                      //Start down
         StepperStop(STEPPER4);
+        DartReset();
         /*
         while((tension1 != targetTen[0]) || (tensionL != targetTen[1])){
             tension1 = RS485_1_GetTension();

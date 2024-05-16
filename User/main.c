@@ -524,6 +524,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim->Instance == htim10.Instance) {     //100ms timer
         static uint16_t pointer, couut;
         couut++;
+        static int32_t lastTension1, lastTensionL;
+        if(releaseFlag == 1 && lastTension1 - tension1 >= -1 && lastTension1 - tension1 <= 1 && lastTensionL - tensionL >= -1 && lastTensionL - tensionL <= 1){
+            stepper0Flag = 1;
+            stepper1Flag = 1;
+        }
         if(contFromLastUart > 0)
             contFromLastUart++;
         if(left3508StopCont > 0){

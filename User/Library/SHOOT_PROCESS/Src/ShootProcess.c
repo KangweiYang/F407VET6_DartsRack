@@ -64,6 +64,8 @@ void DartRelease(void) {
     targetVel[1] = RELEASE_SPEED;
     targetVel[3] = RELEASE_SPEED;
     targetVel[0] = 0;
+    tension1 = RS485_1_GetTension();
+    tensionL = RS485_2_GetTension();
     releaseFlag = 1;
 //    HAL_Delay(delayTime); //2100
     while (targetVel[1] == RELEASE_SPEED || targetVel[3] == RELEASE_SPEED) {

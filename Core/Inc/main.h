@@ -110,7 +110,7 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN Private defines */
 
-#define CONT_TO_READY_TO_SHOOT  400         //ms
+#define CONT_TO_READY_TO_SHOOT  40         //ms
 
 //stepper
 #define STEPPER1    &htim1, TIM_CHANNEL_1   //PA8

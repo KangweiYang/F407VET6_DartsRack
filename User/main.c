@@ -55,7 +55,7 @@ int16_t stepper1Speed = 0;
 int16_t current[4], pos[4], vel[6];
 double targetVel[4];
 int targetPos[4];
-double targetTen[2] = {190, 190};
+double targetTen[2] = {200, 200};
 int targetYawPul = 0;
 
 int furTarTen[4];
@@ -342,6 +342,10 @@ int main(void) {
     while(1) {
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
+        if(shootFlag == 5){
+            ShootOneDart(1);
+            shootFlag = 0;
+        }
         if (sonicRangeDownOpenFlag && contFromLastUart > CONT_TO_READY_TO_SHOOT && furTarTen[1] != 0 && shootFlag < 4){
             shootFlag++;
             printf("shootFlag: %d\n", shootFlag);
@@ -551,7 +555,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 #endif
 #if TEN_INFO
 //            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld, Kp: %.1lf, %.1lf, Kd: %.1lf, %.1lf, UpClose: %d, DownOpen: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown, posKpStepper0, posKpStepper1, posKdStepper0, posKdStepper1, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
-            printf("sonicRangeUp: %ld, sonicRangeDown: %ld,UpClose: %d, DownOpen: %d\n", sonicRangeUp, sonicRangeDown, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
+            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, sonicRangeUp: %ld, sonicRangeDown: %ld,UpClose: %d, DownOpen: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, sonicRangeUp, sonicRangeDown, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
 /*
             for (int i = 0; i < 500; ++i){
                 printf("%c", USART1RxBuf[i]);
@@ -612,7 +616,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 static int cout1;
                 cout1++;
                 printf("TestShoot %d\n", cout1);
-                shootFlag = 1;
+                shootFlag = 5;
             } else if (ContainsSubString(rxHandleBuf, AbortShoot)) {
                 static int cout2;
                 cout2++;

@@ -10,9 +10,6 @@
 #include "../../RS485/Inc/RS485.h"
 #include "../../SHOOT_PROCESS/Inc/ShootProcess.h"
 
-#define SERVO_UP_DOWN   1
-#define SERVO_GRASP     2
-
 extern double targetVel[4];
 extern int32_t tension1, tensionL;
 extern double targetTen[2];
@@ -80,6 +77,41 @@ void ServoGraspDart(void) {
 //    ServoSet(SERVO_UP_DOWN, 65, 200);
     ServoSet(SERVO_UP_DOWN, 20, 0);                         //STOP up
 
+//    if(IsDartReadyToLoad() == 0) {
+//        while (!IsDartReadyToLoad()) {
+//            tension1 = RS485_1_GetTension();
+//            tensionL = RS485_2_GetTension();
+//        }
+//    }
+    while (FeedFSMState() != 3){
+            tension1 = RS485_1_GetTension();
+            tensionL = RS485_2_GetTension();
+    }
+    DartFeedLoading();
+#if SHOOT_INFO
+        printf("GRASP\n");
+#endif
+        ServoSet(SERVO_GRASP, 97, 300);                         //Grasp
+        ServoSet(SERVO_UP_DOWN, 102, 1);                      //Start down
+        DartReset();
+        /*
+        while((tension1 != targetTen[0]) || (tensionL != targetTen[1])){
+            tension1 = RS485_1_GetTension();
+            tensionL = RS485_2_GetTension();
+            printf("Ten1: %d, Ten2: %d\n", tension1, tensionL);
+        }
+        stepper0Flag = 0;
+        stepper1Flag = 0;
+         */
+        ServoSet(SERVO_GRASP, 119, 500);                        //Release
+        ServoSet(SERVO_UP_DOWN, 18, 1);                      //Start up
+        DartFeedLoadingEnd();
+}
+/*
+void ServoGraspDart(void) {
+//    ServoSet(SERVO_UP_DOWN, 65, 200);
+    ServoSet(SERVO_UP_DOWN, 20, 0);                         //STOP up
+
     StepperStart(STEPPER4);
     while (HAL_GPIO_ReadPin(DART_STOP_SW_GPIO_Port, DART_STOP_SW_Pin) == GPIO_PIN_SET){
         tension1 = RS485_1_GetTension();
@@ -95,17 +127,9 @@ void ServoGraspDart(void) {
         ServoSet(SERVO_UP_DOWN, 102, 1);                      //Start down
         StepperStop(STEPPER4);
         DartReset();
-        /*
-        while((tension1 != targetTen[0]) || (tensionL != targetTen[1])){
-            tension1 = RS485_1_GetTension();
-            tensionL = RS485_2_GetTension();
-            printf("Ten1: %d, Ten2: %d\n", tension1, tensionL);
-        }
-        stepper0Flag = 0;
-        stepper1Flag = 0;
-         */
         ServoSet(SERVO_GRASP, 119, 500);                        //Release
         ServoSet(SERVO_UP_DOWN, 18, 1);                      //Start up
 
     }
 }
+*/

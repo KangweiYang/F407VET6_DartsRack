@@ -82,6 +82,8 @@ uint32_t sonicRangeUp = 0, sonicRangeDown = 0;     //ms * 34 (cm/ms)
 int tensionControlFlag = 0;
 
 int16_t RxPointer = 0;
+extern int backCont;
+
 int ContainsAndCopy(uint8_t *buf, int16_t *startPointer, uint8_t byteToFind, uint16_t length, uint8_t *copyBuf){
     if(*startPointer > RX_BUFF_LENGTH)    *startPointer = 0;
     for (int i = *startPointer; i < length; ++i){
@@ -432,6 +434,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //        IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
 //        IncrementalPI(5, velKpStepper, velKiStepper, tensionL, targetTen[1]);
         static int lastYawPul = 1;
+        DartFeedUpUntilSWDetected();
+        DartFeedResetUntilHallDetected();
         if (targetYawPul * lastYawPul < 0)
             HAL_GPIO_TogglePin(STEPPER3_DIR_GPIO_Port, STEPPER3_DIR_Pin);
         if (targetYawPul > 0) {
@@ -525,6 +529,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         static uint16_t pointer, couut;
         couut++;
         static int32_t lastTension1, lastTensionL;
+        if(backCont){
+            if(backCont == 1){
+                DartFeedStopDown();
+            }
+            backCont--;
+        }
         if(releaseFlag == 1 && lastTension1 - tension1 >= -1 && lastTension1 - tension1 <= 1 && lastTensionL - tensionL >= -1 && lastTensionL - tensionL <= 1){
             stepper0Flag = 1;
             stepper1Flag = 1;
@@ -561,6 +571,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 #if TEN_INFO
 //            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld, Kp: %.1lf, %.1lf, Kd: %.1lf, %.1lf, UpClose: %d, DownOpen: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown, posKpStepper0, posKpStepper1, posKdStepper0, posKdStepper1, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
             printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, sonicRangeUp: %ld, sonicRangeDown: %ld,UpClose: %d, DownOpen: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, sonicRangeUp, sonicRangeDown, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
+//            printf("FSM: %d\n", FeedFSMState());
+
+            if(contFromLastUart > CONT_TO_READY_TO_SHOOT && furTarTen[0] != 0  && shootFlag < 4)
+                DartFeedStartUp();
 /*
             for (int i = 0; i < 500; ++i){
                 printf("%c", USART1RxBuf[i]);
@@ -640,9 +654,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 contFromLastUart = 1;
                 shootFlag = 0;
                 printf("ResetFeed %d\n", cout4);
-                StepperSetSpeed(STEPPER4, -500);
-                StepperStart(STEPPER4);
-                resetFeedCont += 28;
+                DartFeedStartDown();
+//                StepperSetSpeed(STEPPER4, -500);
+//                StepperStart(STEPPER4);
+//                resetFeedCont += 28;
             } else if (ContainsSubString(rxHandleBuf, SonicRangeTestSetParas)) {
                 static int cout6;
                 cout6++;

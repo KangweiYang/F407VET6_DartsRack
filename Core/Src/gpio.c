@@ -100,10 +100,10 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PtPin */
-  GPIO_InitStruct.Pin = HALL_RIGHT_SW___Pin;
+  GPIO_InitStruct.Pin = HALL_FEED_BOTTOM_SW_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(HALL_RIGHT_SW___GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(HALL_FEED_BOTTOM_SW_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PtPin */
   GPIO_InitStruct.Pin = DART_STOP_SW_Pin;

@@ -5,6 +5,9 @@
 #include "../Inc/ShootProcess.h"
 #include "main.h"
 #include "../../RS485/Inc/RS485.h"
+#include "../../STEPPER/Inc/Stepper.h"
+#include "tim.h"
+#include "../../SERVO/Inc/Servo.h"
 #include "usart.h"
 
 extern int motor0Flag, motor1Flag, motor2Flag, motor3Flag, stepper0Flag, stepper1Flag;
@@ -15,6 +18,97 @@ extern int left3508StopCont, right3508StopCont, releaseFlag;
 
 extern int furTarTen[4];
 extern int furTarYaw[4];
+
+int feedFSMstate = 0;
+int backCont = 0;
+
+int FeedFSMState(void){
+    return feedFSMstate;
+}
+
+void DartFeedFSM(void){
+    switch (feedFSMstate) {
+        case -1:                //downward moving
+            StepperStart(STEPPER4);
+            StepperSetSpeed(STEPPER4, -500);
+            break;
+        case 0:                 //not move
+            StepperSetSpeed(STEPPER4, 0);
+            break;
+        case 1:                 //upward moving
+            StepperStart(STEPPER4);
+            StepperSetSpeed(STEPPER4, 850);
+            ServoSet(SERVO_UP_DOWN, 20, 0);
+            break;
+        case 2:                 //dart loading
+            StepperSetSpeed(STEPPER4, 0);
+            break;
+        case 3:                 //dart is ready to load
+            StepperSetSpeed(STEPPER4, 0);
+            break;
+    }
+}
+
+void DartFeedStartDown(void){
+    feedFSMstate = -1;
+    DartFeedFSM();
+}
+
+void DartFeedResetUntilHallDetected(void){
+    if(feedFSMstate == -1) {
+        if (HAL_GPIO_ReadPin(HALL_FEED_BOTTOM_SW_GPIO_Port, HALL_FEED_BOTTOM_SW_Pin) == GPIO_PIN_RESET) {
+            feedFSMstate = 0;
+            DartFeedFSM();
+        }
+    }
+}
+
+void DartFeedStartUp(void){
+    if(feedFSMstate != -1 && feedFSMstate != 2 && feedFSMstate != 3) {
+        feedFSMstate = 1;
+        DartFeedFSM();
+    }
+}
+
+void DartFeedUpUntilSWDetected(void){
+    if(feedFSMstate == 1){
+        if(HAL_GPIO_ReadPin(DART_STOP_SW_GPIO_Port, DART_STOP_SW_Pin) == GPIO_PIN_RESET){
+            feedFSMstate = -1;
+            backCont = 2;
+            DartFeedFSM();
+        }
+    }
+}
+
+void DartFeedLoading(void){
+    feedFSMstate = 2;
+    DartFeedFSM();
+}
+
+void DartFeedLoadingEnd(void){
+    feedFSMstate = 0;
+    DartFeedFSM();
+}
+
+int IsDartReadyToLoad(void){
+    if(feedFSMstate == 3) {
+        feedFSMstate = 2;
+        DartFeedFSM();
+        printf("retrun1\n");
+        return 1;
+    }
+    return 0;
+}
+
+void DartFeedStopDown(void){
+    if(backCont == 1){
+        feedFSMstate = 3;
+        DartFeedFSM();
+        return;
+    }
+    feedFSMstate = 0;
+    DartFeedFSM();
+}
 
 void DartReset(void){
     motor0Flag = 0;
@@ -129,7 +223,7 @@ void DartShoot(void) {
         tensionL = RS485_2_GetTension();
     }
 #if SHOOT_INFO
-    printf("DART SHOOT OK!\n");
+    printf("DART SHOOT OK!    system time: %ld ms\n", HAL_GetTick());
 #endif
     HAL_Delay(100);
     targetVel[0] = 0;

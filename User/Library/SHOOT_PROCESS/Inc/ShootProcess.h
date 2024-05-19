@@ -7,6 +7,24 @@
 
 #include "main.h"
 
+int FeedFSMState(void);
+
+void DartFeedStartDown(void);
+
+void DartFeedResetUntilHallDetected(void);
+
+void DartFeedStartUp(void);
+
+void DartFeedUpUntilSWDetected(void);
+
+void DartFeedLoading(void);
+
+void DartFeedLoadingEnd(void);
+
+int IsDartReadyToLoad(void);
+
+void DartFeedStopDown(void);
+
 void DartReset(void);
 
 void DartLoad(void);

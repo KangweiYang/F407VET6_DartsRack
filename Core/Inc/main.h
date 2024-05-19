@@ -78,8 +78,8 @@ void SystemClock_Config(void);
 #define HALL_BACK_SW___GPIO_Port GPIOA
 #define HALL_LEFT_SW___Pin GPIO_PIN_5
 #define HALL_LEFT_SW___GPIO_Port GPIOA
-#define HALL_RIGHT_SW___Pin GPIO_PIN_5
-#define HALL_RIGHT_SW___GPIO_Port GPIOC
+#define HALL_FEED_BOTTOM_SW_Pin GPIO_PIN_5
+#define HALL_FEED_BOTTOM_SW_GPIO_Port GPIOC
 #define RS485_2_RX_TX_CONTROL_Pin GPIO_PIN_15
 #define RS485_2_RX_TX_CONTROL_GPIO_Port GPIOE
 #define DART_STOP_SW_Pin GPIO_PIN_14
@@ -128,6 +128,10 @@ void SystemClock_Config(void);
 #define STEPPER1SMALLSMALLKD 50
 #define STEPPER2SMALLSMALLKP 50
 #define STEPPER2SMALLSMALLKD 50
+
+//servo
+#define SERVO_UP_DOWN   1
+#define SERVO_GRASP     2
 
 //#define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
 #define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5

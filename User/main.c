@@ -21,6 +21,7 @@
 #include "Library/CAN/Inc/Can.h"
 #include "Library/RS485/Inc/RS485.h"
 #include "Library/SHOOT_PROCESS/Inc/ShootProcess.h"
+#include "Library/REMOTE/Inc/remote.h"
 
 const uint8_t SetYaw[] = {7, 'S', 'e', 't', 'Y', 'a', 'w'};
 const uint8_t SetTen[] = {7, 'S', 'e', 't', 'T', 'e', 'n'};
@@ -83,6 +84,7 @@ int tensionControlFlag = 0;
 
 int16_t RxPointer = 0;
 extern int backCont;
+extern uint8_t _rx_buf[18];
 
 int ContainsAndCopy(uint8_t *buf, int16_t *startPointer, uint8_t byteToFind, uint16_t length, uint8_t *copyBuf){
     if(*startPointer > RX_BUFF_LENGTH)    *startPointer = 0;
@@ -188,6 +190,7 @@ void UserInit(void) {
 //    HAL_DMA_Init(&hdma2);
 //    HAL_UART_Receive_IT(&huart1, USART1RxBuf, RX_BUFF_LENGTH);
     HAL_UART_Receive_DMA(&huart1, USART1RxBuf, RX_BUFF_LENGTH);
+//    RemoteInit();
 
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
 }
@@ -334,6 +337,7 @@ void CubeMXInit(void){
     MX_CAN2_Init();
     MX_USART2_UART_Init();
     MX_USART3_UART_Init();
+    MX_UART5_Init();
     MX_TIM12_Init();
     MX_USB_OTG_FS_PCD_Init();
     MX_TIM10_Init();
@@ -592,7 +596,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld, Kp: %.1lf, %.1lf, Kd: %.1lf, %.1lf, UpClose: %d, DownOpen: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown, posKpStepper0, posKpStepper1, posKdStepper0, posKdStepper1, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
             printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, sonicRangeUp: %ld, sonicRangeDown: %ld,UpClose: %d, DownOpen: %d, Relay GPIO: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, sonicRangeUp, sonicRangeDown, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag,
                    HAL_GPIO_ReadPin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin));
+            HAL_UART_Receive_DMA(&huart5, _rx_buf, 18);
             printf("FSM: %d, contFromLastUart: %lld\n", FeedFSMState(), contFromLastUart);
+            for (int i = 0; i < 18; ++i){
+                printf("%x, ",_rx_buf[i]);
+            }
+            printf("\n");
+//            HAL_UART_Receive(&huart5, _rx_buf, 18, 2);
+            RemoteControl();
             /*
             int x = 16, y = 96;
             if(couut == 100) {

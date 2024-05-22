@@ -2,7 +2,7 @@ add_library(remote STATIC)
 
 target_sources(remote
         PRIVATE
-        Src/remote.cpp
+        Src/remote.c
         )
 
 target_include_directories(remote

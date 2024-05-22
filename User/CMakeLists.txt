@@ -19,6 +19,7 @@ target_link_libraries(${PROJECT_NAME}.elf
         servo
         stepper
         shoot_process
+        remote
         )
 
 set(HEX_FILE ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.hex)

@@ -41,25 +41,13 @@
 #define KEY_PRESSED_OFFSET_V            ((uint16_t)1 << 14)
 #define KEY_PRESSED_OFFSET_B            ((uint16_t)1 << 15)
 /* ----------------------- Data Struct ------------------------------------- */
-
-class cRemote
+typedef struct
 {
-public:
-    typedef struct
-    {
-        int16_t ch[5]{};
-        char s[2]{};
-    }sRemoteInfo;
+    int16_t ch[5];
+    char s[2];
+}sRemoteInfo;
 
-    cRemote(UART_HandleTypeDef* huart) : _huart(huart){}
-    void init();
-    void update(void (*function)(sRemoteInfo));
-    sRemoteInfo getInfo();
-
-private:
-    UART_HandleTypeDef* _huart;
-    uint8_t _rx_buf[18]{};
-    sRemoteInfo _info{};
-};
+void RemoteInit(void);
+void RemoteControl(void);
 
 #endif //MYUSART_H

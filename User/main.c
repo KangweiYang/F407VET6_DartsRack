@@ -762,10 +762,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         }
         static uint32_t lastSonicRangeDown = 170;
         if(lastSonicRangeDown < 70 && sonicRangeDown > 150 && contFromLastUart > CONT_TO_READY_TO_SHOOT){
-            sonicRangeDownOpenFlag = 1;
+//            sonicRangeDownOpenFlag = 1;
         }
         if(sonicRangeDown < 70){
-            sonicRangeDownOpenFlag = 0;
+//            sonicRangeDownOpenFlag = 0;
         }
         /*
         if(shootFlag == 5){

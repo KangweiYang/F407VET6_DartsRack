@@ -9,6 +9,7 @@
 
 uint8_t _rx_buf[18];
 sRemoteInfo _info;
+extern int sonicRangeUpCloseFlag, sonicRangeDownOpenFlag;
 
 void RemoteInit(void) {
     HAL_UART_Receive_DMA(&huart5, _rx_buf, 18);
@@ -18,37 +19,39 @@ void MainControl()
 {
     switch (_info.s[1])
     {
-        case 1:
+        case 1:                     //left s
         {
-            printf("s[1]: 1\n");
+            printf("s[1]: 1\n");    //left: up
             break;
         }
         case 3:
         {
-            printf("s[1]: 3\n");
+            printf("s[1]: 3\n");    //left: middle
+            sonicRangeDownOpenFlag = 0;
             break;
         }
         case 2:
         {
-            printf("s[1]: 2\n");
+            printf("s[1]: 2\n");    //left: down
+            sonicRangeDownOpenFlag = 1;
             break;
         }
     }
-    switch (_info.s[0])
+    switch (_info.s[0])             //right s
     {
         case 1:
         {
-            printf("s[0]: 1\n");
+            printf("s[0]: 1\n");    //right: down
             break;
         }
         case 3:
         {
-            printf("s[0]: 3\n");
+            printf("s[0]: 3\n");    //right: middle
             break;
         }
         case 2:
         {
-            printf("s[0]: 2\n");
+            printf("s[0]: 2\n");    //right: up
             break;
         }
     }

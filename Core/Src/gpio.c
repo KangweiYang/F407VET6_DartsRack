@@ -38,7 +38,6 @@
         * Output
         * EVENT_OUT
         * EXTI
-     PC4   ------> ADCx_IN14
 */
 void MX_GPIO_Init(void)
 {
@@ -58,7 +57,8 @@ void MX_GPIO_Init(void)
                           |RS485_2_RX_TX_CONTROL_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, STEPPER1_DIR_Pin|STEPPER2_DIR_Pin|STEPPER3_DIR_Pin|STEPPER4_DIR_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, STEPPER1_DIR_Pin|STEPPER2_DIR_Pin|STEPPER3_DIR_Pin|STEPPER4_DIR_Pin
+                          |RELAY_CONTROL_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(YAW_STEPPER_PUL_GPIO_Port, YAW_STEPPER_PUL_Pin, GPIO_PIN_RESET);
@@ -93,11 +93,12 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PC4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  /*Configure GPIO pin : PtPin */
+  GPIO_InitStruct.Pin = RELAY_CONTROL_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(RELAY_CONTROL_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PtPin */
   GPIO_InitStruct.Pin = HALL_FEED_BOTTOM_SW_Pin;

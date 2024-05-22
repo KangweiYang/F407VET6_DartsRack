@@ -37,7 +37,7 @@ void DartFeedFSM(void){
             break;
         case 1:                 //upward moving
             StepperStart(STEPPER4);
-            StepperSetSpeed(STEPPER4, 850);
+            StepperSetSpeed(STEPPER4, 500);
             ServoSet(SERVO_UP_DOWN, 20, 0);
             break;
         case 2:                 //dart loading
@@ -171,8 +171,7 @@ void DartRelease(void) {
             targetVel[1] = 0;
             targetVel[3] = 0;
             targetVel[0] = SHOOT_SPEED;
-            tension1 = RS485_1_GetTension();
-            tensionL = RS485_2_GetTension();
+            HAL_Delay(200);
             targetVel[0] = 0;
             motor0Flag = 0;
             DartLoad();

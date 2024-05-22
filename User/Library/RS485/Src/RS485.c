@@ -68,12 +68,6 @@ int32_t RS485_1_GetTension(void){
     else if(rs4851data[0] == 0x01 && rs4851data[1] == 0x03 && rs4851data[2] == 0x04) tension1DataAddress = 3;
     else if(rs4851data[1] == 0x01 && rs4851data[2] == 0x03 && rs4851data[3] == 0x04) tension1DataAddress = 4;
     else if(rs4851data[2] == 0x01 && rs4851data[3] == 0x03 && rs4851data[4] == 0x04) tension1DataAddress = 5;
-    else{
-        printf("rs485 1 error!!!");
-        for (int i = 0; i < 11; ++i)
-            printf("%x,", rs4851data[i]);
-//        printf("\n");
-    }
 #if RS485_INFO
     printf("1receive: ");
     for (int i = 0; i < 11; ++i)
@@ -110,12 +104,6 @@ int32_t RS485_2_GetTension(void){
     else if(rs4852data[0] == 0x01 && rs4852data[1] == 0x03 && rs4852data[2] == 0x04) tension2DataAddress = 3;
     else if(rs4852data[1] == 0x01 && rs4852data[2] == 0x03 && rs4852data[3] == 0x04) tension2DataAddress = 4;
     else if(rs4852data[2] == 0x01 && rs4852data[3] == 0x03 && rs4852data[4] == 0x04) tension2DataAddress = 5;
-    else{
-        printf("rs485 2 error!!!");
-        for (int i = 0; i < 11; ++i)
-            printf("%x,", rs4852data[i]);
-//        printf("\n");
-    }
 #if RS485_INFO
     printf("2receive: ");
     for (int i = 0; i < 11; ++i)

@@ -14,6 +14,7 @@ extern double targetVel[4];
 extern int32_t tension1, tensionL;
 extern double targetTen[2];
 extern int motor0Flag, motor1Flag, motor2Flag, motor3Flag, stepper0Flag, stepper1Flag;
+extern int shootFlag;
 
 void DartLoad1(uint16_t delayTime){
     targetVel[1] = 3000;
@@ -91,8 +92,8 @@ void ServoGraspDart(void) {
 #if SHOOT_INFO
         printf("GRASP\n");
 #endif
-        ServoSet(SERVO_GRASP, 97, 300);                         //Grasp
-        ServoSet(SERVO_UP_DOWN, 102, 1);                      //Start down
+        ServoSet(SERVO_GRASP, 104, 300);                         //Grasp
+        ServoSet(SERVO_UP_DOWN, 98, 1);                      //Start down
         DartReset();
         /*
         while((tension1 != targetTen[0]) || (tensionL != targetTen[1])){
@@ -103,9 +104,13 @@ void ServoGraspDart(void) {
         stepper0Flag = 0;
         stepper1Flag = 0;
          */
-        ServoSet(SERVO_GRASP, 119, 500);                        //Release
+        ServoSet(SERVO_GRASP, 120, 500);                        //Release
         ServoSet(SERVO_UP_DOWN, 18, 1);                      //Start up
         DartFeedLoadingEnd();
+        if(shootFlag < 4)
+            DartFeedStartUp();
+        else
+            StepperSetSpeed(STEPPER4, 0);
 }
 /*
 void ServoGraspDart(void) {

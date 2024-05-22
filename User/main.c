@@ -36,7 +36,7 @@ int resetFeedCont = -1;
 
 int left3508StopCont = -1, right3508StopCont = -1, releaseFlag = 0;
 
-uint64_t contFromLastUart = 0;
+uint64_t contFromLastUart = 1;
 int sonicRangeUpCloseFlag = 1, sonicRangeDownOpenFlag = 0;
 
 int PWMtest = 75;
@@ -55,7 +55,7 @@ int16_t stepper1Speed = 0;
 int16_t current[4], pos[4], vel[6];
 double targetVel[4];
 int targetPos[4];
-double targetTen[2] = {200, 200};
+double targetTen[2] = {START_TENSION, START_TENSION};
 int targetYawPul = 0;
 
 int furTarTen[4];
@@ -77,7 +77,7 @@ int motor0Flag = 0, motor1Flag = 0, motor2Flag = 0, motor3Flag = 0, stepper0Flag
 int stepper0WaitingToStopFlag = 0, stepper1WaitingToStopFlag = 0;
 uint8_t USART1RxBuf[RX_BUFF_LENGTH];
 
-uint32_t sonicRangeUp = 0, sonicRangeDown = 0;     //ms * 34 (cm/ms)
+uint32_t sonicRangeUp = 200, sonicRangeDown = 180;     //ms * 34 (cm/ms)
 
 int tensionControlFlag = 0;
 
@@ -156,8 +156,8 @@ void UserInit(void) {
     StepperInit(STEPPER2, 1680 - 1);
 //    StepperInit(STEPPER3, 1680 - 1);
     StepperInit(STEPPER4, 1680 - 1);
-    ServoSet(2, 109, 10);
-    ServoSet(3, 500, 10);
+    ServoSet(SERVO_GRASP, 120, 10);
+    ServoSet(SERVO_UP_DOWN, 18, 1);                      //Start up
     ServoSet(4, 500, 10);
     Double_PID_Init();
 
@@ -188,6 +188,8 @@ void UserInit(void) {
 //    HAL_DMA_Init(&hdma2);
 //    HAL_UART_Receive_IT(&huart1, USART1RxBuf, RX_BUFF_LENGTH);
     HAL_UART_Receive_DMA(&huart1, USART1RxBuf, RX_BUFF_LENGTH);
+
+    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
 }
 
 void ShootOneDart(int dartSerial) {
@@ -195,9 +197,16 @@ void ShootOneDart(int dartSerial) {
     stepper1Flag = 0;
     targetTen[0] = furTarTen[dartSerial - 1];
     targetTen[1] = furTarTen[dartSerial - 1];
+    /*
+    if(dartSerial == 1) {
+        furTarTen[0] = 0;
+        furTarTen[0] = 0;
+    }
+     */
     if(dartSerial == 1) targetYawPul = furTarYaw[0];
-    else    targetYawPul = -furTarYaw[dartSerial - 1] + furTarYaw[dartSerial];
+    else    targetYawPul = -furTarYaw[dartSerial - 2] + furTarYaw[dartSerial - 1];
     ServoGraspDart();
+    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
     DartLoad();
     DartRelease();
     stepper0Flag = 1;
@@ -205,9 +214,9 @@ void ShootOneDart(int dartSerial) {
     tensionControlFlag = 1;
     {
         int prevTen1[WAIT_TIMES], prevTenL[WAIT_TIMES], i = 0;
-        while (((tension1 != targetTen[0]) || (tensionL != targetTen[1])
+        while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
             || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
-            || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)) || sonicRangeUpCloseFlag) {
+            || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)) {
             stepper0Flag = 1;
             stepper1Flag = 1;
             prevTen1[i] = tension1;
@@ -216,6 +225,7 @@ void ShootOneDart(int dartSerial) {
             tensionL = RS485_2_GetTension();
             i++;
             if(i >= WAIT_TIMES) i = 0;
+            /*
             printf("Ten1: %d, Ten2: %d, prevTen1   ", tension1, tensionL);
             for (int j = 0; j < WAIT_TIMES; ++j){
                 printf("%d, ", prevTen1[j]);
@@ -225,12 +235,14 @@ void ShootOneDart(int dartSerial) {
                 printf("%d, ", prevTen1[j]);
             }
             printf("\n");
+             */
         }
     }
     tensionControlFlag = 0;
     stepper0Flag = 0;
     stepper1Flag = 0;
     DartShoot();
+    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
 }
 
 /**
@@ -344,6 +356,10 @@ int main(void) {
     while(1) {
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
+        if(contFromLastUart > CONT_TO_READY_TO_SHOOT){
+            targetTen[0] = 180;
+            targetTen[1] = 180;
+        }
         if(shootFlag == 5){
             ShootOneDart(1);
             shootFlag = 0;
@@ -352,6 +368,9 @@ int main(void) {
             shootFlag++;
             printf("shootFlag: %d\n", shootFlag);
             ShootOneDart(shootFlag);
+            if(shootFlag == 2) {
+                contFromLastUart = CONT_TO_READY_TO_SHOOT - SHOOT_BREAK;
+            }
         }
     }
     /* USER CODE BEGIN 3 */
@@ -451,7 +470,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         }
         if (cont == 10) {
             if(stepper0Flag == 0) StepperSetSpeed(STEPPER1, 0);
-            else if (stepper0Flag && tension1 <= 600 && tension1 >= 5) {
+            else if (stepper0Flag && tension1 <= 700 && tension1 >= 5) {
 //            IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
                 StepperStart(STEPPER1);
                 static double lastBias;
@@ -485,9 +504,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //            printf("%lf\n", STEPPER1_Kp);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed);
             }
-            else if (tension1 > 600)    StepperSetSpeed(STEPPER1, 0);
+            else if (tension1 > 700)    StepperSetSpeed(STEPPER1, 0);
             if(stepper1Flag == 0) StepperSetSpeed(STEPPER2, 0);
-            else if (stepper1Flag && tensionL <= 600 && tensionL >= 5) {
+            else if (stepper1Flag && tensionL <= 700 && tensionL >= 5) {
                 int32_t tensionLL = tensionL;
                 static double lastBias;
                 if((targetTen[1] - (double) tensionLL) <= STEPPER_CHANGE_TO_SMALL_K && (targetTen[1] - (double) tensionLL) >= -STEPPER_CHANGE_TO_SMALL_K){
@@ -521,26 +540,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //            printf("%ld, %lf = -20 * (%lf - %ld)\n", tensionL, STEPPER2_Kp, targetTen[1], tensionLL);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionLL, stepper0Speed, stepper1Speed);
             }
-            else if (tensionL > 600)    StepperSetSpeed(STEPPER2, 0);
+            else if (tensionL > 700)    StepperSetSpeed(STEPPER2, 0);
             cont = 0;
         }
-    }
-    if (htim->Instance == htim10.Instance) {     //100ms timer
-        static uint16_t pointer, couut;
-        couut++;
-        static int32_t lastTension1, lastTensionL;
-        if(backCont){
-            if(backCont == 1){
-                DartFeedStopDown();
-            }
-            backCont--;
-        }
-        if(releaseFlag == 1 && lastTension1 - tension1 >= -1 && lastTension1 - tension1 <= 1 && lastTensionL - tensionL >= -1 && lastTensionL - tensionL <= 1){
-            stepper0Flag = 1;
-            stepper1Flag = 1;
-        }
-        if(contFromLastUart > 0)
-            contFromLastUart++;
         if(left3508StopCont > 0){
             left3508StopCont--;
         }
@@ -554,6 +556,24 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             right3508StopCont--;
             targetVel[3] = 0;
         }
+    }
+    if (htim->Instance == htim10.Instance) {     //100ms timer
+        static uint16_t pointer, couut;
+        couut++;
+        static int32_t lastTension1, lastTensionL;
+        if(backCont){
+            if(backCont == 1){
+                DartFeedStopDown();
+                printf("STOP FEED STEPPER DOWN\n");
+            }
+            backCont--;
+        }
+        if(releaseFlag == 1 && lastTension1 - tension1 >= -1 && lastTension1 - tension1 <= 1 && lastTensionL - tensionL >= -1 && lastTensionL - tensionL <= 1){
+            stepper0Flag = 1;
+            stepper1Flag = 1;
+        }
+        if(contFromLastUart > 0)
+            contFromLastUart++;
         //sonic range
         if(couut % 2 == 0) {
             HAL_GPIO_TogglePin(SONIC_RANGE_TRIG1_GPIO_Port, SONIC_RANGE_TRIG1_Pin);
@@ -562,7 +582,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             HAL_GPIO_TogglePin(SONIC_RANGE_TRIG2_GPIO_Port, SONIC_RANGE_TRIG2_Pin);
         }
         //sonic range
-        if(couut >= 10){
+        if(couut % 10 == 0){
 #if HALL_INFO
         printf("BACK: %d, LEFT: %d, RIGHT: %d\n", HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin),
                HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin),
@@ -570,18 +590,30 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 #endif
 #if TEN_INFO
 //            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld, Kp: %.1lf, %.1lf, Kd: %.1lf, %.1lf, UpClose: %d, DownOpen: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown, posKpStepper0, posKpStepper1, posKdStepper0, posKdStepper1, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
-            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, sonicRangeUp: %ld, sonicRangeDown: %ld,UpClose: %d, DownOpen: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, sonicRangeUp, sonicRangeDown, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
-//            printf("FSM: %d\n", FeedFSMState());
-
+            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, sonicRangeUp: %ld, sonicRangeDown: %ld,UpClose: %d, DownOpen: %d, Relay GPIO: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, sonicRangeUp, sonicRangeDown, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag,
+                   HAL_GPIO_ReadPin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin));
+            printf("FSM: %d, contFromLastUart: %lld\n", FeedFSMState(), contFromLastUart);
+            /*
+            int x = 16, y = 96;
+            if(couut == 100) {
+                ServoSet(SERVO_UP_DOWN, x, 0);
+                printf("servo: %d\n", x);
+            }
+            else if(couut == 200) {
+                ServoSet(SERVO_UP_DOWN, y, 0);
+                printf("servo: %d\n", y);
+                couut = 0;
+            }
+             */
             if(contFromLastUart > CONT_TO_READY_TO_SHOOT && furTarTen[0] != 0  && shootFlag < 4)
                 DartFeedStartUp();
+            couut = 0;
 /*
             for (int i = 0; i < 500; ++i){
                 printf("%c", USART1RxBuf[i]);
             }
             printf("\n");
 */
-            couut = 0;
 #endif
         }
         if(resetFeedCont > 0)   resetFeedCont--;
@@ -612,6 +644,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                         break;
                 }
             } else if (ContainsSubString(rxHandleBuf + 1, SetTen)) {
+                HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
                 contFromLastUart = 1;
                 shootFlag = 0;
                 switch (rxHandleBuf[8]) {
@@ -636,6 +669,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 cout1++;
                 printf("TestShoot %d\n", cout1);
                 shootFlag = 5;
+                DartFeedStartUp();
+                HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
             } else if (ContainsSubString(rxHandleBuf, AbortShoot)) {
                 static int cout2;
                 cout2++;
@@ -654,10 +689,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 contFromLastUart = 1;
                 shootFlag = 0;
                 printf("ResetFeed %d\n", cout4);
-                DartFeedStartDown();
-//                StepperSetSpeed(STEPPER4, -500);
-//                StepperStart(STEPPER4);
-//                resetFeedCont += 28;
+//                DartFeedStartDown();
+                StepperSetSpeed(STEPPER4, -500);
+                StepperStart(STEPPER4);
+                resetFeedCont += 45;
             } else if (ContainsSubString(rxHandleBuf, SonicRangeTestSetParas)) {
                 static int cout6;
                 cout6++;
@@ -689,11 +724,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
             }
         }
         static uint32_t lastSonicRangeUp;
-        if(sonicRangeUp < 50 && lastSonicRangeUp > 100){
+        if(sonicRangeUp < 120 && lastSonicRangeUp > 140){
             sonicRangeUpCloseFlag = 1;
         }
-        if(sonicRangeUp > 100){
+        if(sonicRangeUp > 140 && contFromLastUart > CONT_TO_READY_TO_SHOOT){
             sonicRangeUpCloseFlag = 0;
+        }
+        if(shootFlag == 5){
+            sonicRangeUpCloseFlag = 0;
+            sonicRangeDownOpenFlag = 1;
         }
         lastSonicRangeUp = sonicRangeUp;
     }
@@ -710,13 +749,19 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
             }
 //        }
         }
-        static uint32_t lastSonicRangeDown;
-        if(lastSonicRangeDown < 50 && sonicRangeDown > 100){
+        static uint32_t lastSonicRangeDown = 170;
+        if(lastSonicRangeDown < 70 && sonicRangeDown > 150 && contFromLastUart > CONT_TO_READY_TO_SHOOT){
             sonicRangeDownOpenFlag = 1;
         }
-        if(sonicRangeDown < 50){
+        if(sonicRangeDown < 70){
             sonicRangeDownOpenFlag = 0;
         }
+        /*
+        if(shootFlag == 5){
+            sonicRangeUpCloseFlag = 0;
+            sonicRangeDownOpenFlag = 1;
+        }
+         */
         lastSonicRangeDown = sonicRangeDown;
     }
     if(GPIO_Pin == SONIC_RANGE_ECHO2_Pin) {
@@ -728,11 +773,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         printf("LEFT_HALL_EXTI\n");
         if(targetVel[1] == RESET_SPEED){
             targetVel[1] = 0;
-//        } else if(targetVel[1] == -RESET_SPEED){
-//            targetVel[1] = 0;
+        } else if(targetVel[1] == -RESET_SPEED){
+            targetVel[1] = 0;
         }
         if(releaseFlag) {
-            left3508StopCont = 1;
+            left3508StopCont = 30;
         }
     }
     if(GPIO_Pin == HALL_RIGHT_SW_Pin){
@@ -743,7 +788,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 //            targetVel[3] = 0;
         }
         if(releaseFlag) {
-            right3508StopCont = 1;
+            right3508StopCont = 30;
         }
     }
 }

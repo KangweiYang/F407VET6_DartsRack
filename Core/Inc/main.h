@@ -78,6 +78,8 @@ void SystemClock_Config(void);
 #define HALL_BACK_SW___GPIO_Port GPIOA
 #define HALL_LEFT_SW___Pin GPIO_PIN_5
 #define HALL_LEFT_SW___GPIO_Port GPIOA
+#define RELAY_CONTROL_Pin GPIO_PIN_4
+#define RELAY_CONTROL_GPIO_Port GPIOC
 #define HALL_FEED_BOTTOM_SW_Pin GPIO_PIN_5
 #define HALL_FEED_BOTTOM_SW_GPIO_Port GPIOC
 #define RS485_2_RX_TX_CONTROL_Pin GPIO_PIN_15
@@ -110,7 +112,9 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN Private defines */
 
-#define CONT_TO_READY_TO_SHOOT  40         //ms
+#define CONT_TO_READY_TO_SHOOT  600         //100ms
+#define SHOOT_BREAK  300         //100ms
+#define START_TENSION   230
 
 //stepper
 #define STEPPER1    &htim1, TIM_CHANNEL_1   //PA8
@@ -124,9 +128,9 @@ void SystemClock_Config(void);
 #define STEPPER1SMALLKD 50
 #define STEPPER2SMALLKP 150
 #define STEPPER2SMALLKD 50
-#define STEPPER1SMALLSMALLKP 50
+#define STEPPER1SMALLSMALLKP 80
 #define STEPPER1SMALLSMALLKD 50
-#define STEPPER2SMALLSMALLKP 50
+#define STEPPER2SMALLSMALLKP 80
 #define STEPPER2SMALLSMALLKD 50
 
 //servo
@@ -170,11 +174,11 @@ extern double posKpStepper1, posKiStepper1, posKdStepper1;
 
 //shoot progress
 #define SHOOT_INFO  1
-#define RESET_SPEED 500
-#define LOAD_SPEED  3000
-#define RELEASE_SPEED   -3700
+#define RESET_SPEED 700
+#define LOAD_SPEED  5000
+#define RELEASE_SPEED   -5000
 #define SHOOT_SPEED -3000
-#define WAIT_TIMES  2
+#define WAIT_TIMES  1
 
 #define TENSION1_DATA_ADDRESS    4
 #define TENSION2_DATA_ADDRESS    3

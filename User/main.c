@@ -37,7 +37,7 @@ int resetFeedCont = -1;
 
 int left3508StopCont = -1, right3508StopCont = -1, releaseFlag = 0;
 
-uint64_t contFromLastUart = 1;
+uint64_t contFromLastUart = 0;
 int sonicRangeUpCloseFlag = 1, sonicRangeDownOpenFlag = 0;
 
 int PWMtest = 75;
@@ -196,6 +196,7 @@ void UserInit(void) {
 }
 
 void ShootOneDart(int dartSerial) {
+    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
     stepper0Flag = 0;
     stepper1Flag = 0;
     targetTen[0] = furTarTen[dartSerial - 1];
@@ -360,9 +361,12 @@ int main(void) {
     while(1) {
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
-        if(contFromLastUart > CONT_TO_READY_TO_SHOOT){
-            targetTen[0] = 180;
-            targetTen[1] = 180;
+        if(contFromLastUart >= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK && contFromLastUart <= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK + 10){
+            stepper0Flag = 1;
+            stepper1Flag = 1;
+            targetTen[0] = 200;
+            targetTen[1] = 200;
+            HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
         }
         if(shootFlag == 5){
             ShootOneDart(1);
@@ -761,11 +765,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 //        }
         }
         static uint32_t lastSonicRangeDown = 170;
-        if(lastSonicRangeDown < 70 && sonicRangeDown > 150 && contFromLastUart > CONT_TO_READY_TO_SHOOT){
-//            sonicRangeDownOpenFlag = 1;
+        if(lastSonicRangeDown < 150 && sonicRangeDown > 150 && contFromLastUart > CONT_TO_READY_TO_SHOOT){
+            sonicRangeDownOpenFlag = 1;
         }
-        if(sonicRangeDown < 70){
-//            sonicRangeDownOpenFlag = 0;
+        if(sonicRangeDown < 150){
+            sonicRangeDownOpenFlag = 0;
         }
         /*
         if(shootFlag == 5){

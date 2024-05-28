@@ -178,7 +178,7 @@ extern double posKpStepper1, posKiStepper1, posKdStepper1;
 #define LOAD_SPEED  5000
 #define RELEASE_SPEED   -5000
 #define SHOOT_SPEED -3000
-#define WAIT_TIMES  1
+#define WAIT_TIMES  2
 
 #define TENSION1_DATA_ADDRESS    4
 #define TENSION2_DATA_ADDRESS    3

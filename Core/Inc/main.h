@@ -114,7 +114,7 @@ void SystemClock_Config(void);
 
 #define CONT_TO_READY_TO_SHOOT  600         //100ms
 #define SHOOT_BREAK  300         //100ms
-#define START_TENSION   230
+#define START_TENSION   30
 
 //stepper
 #define STEPPER1    &htim1, TIM_CHANNEL_1   //PA8
@@ -179,6 +179,11 @@ extern double posKpStepper1, posKiStepper1, posKdStepper1;
 #define RELEASE_SPEED   -5000
 #define SHOOT_SPEED -3000
 #define WAIT_TIMES  2
+
+//judge system uart
+#define JUDGE_INFO  1
+#define RX6_BUFF_LENGTH 10000
+
 
 #define TENSION1_DATA_ADDRESS    4
 #define TENSION2_DATA_ADDRESS    3

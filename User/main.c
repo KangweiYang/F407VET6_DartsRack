@@ -76,7 +76,7 @@ uint32_t adc1in4, adc1in5, adc1in14, adc1in15;
 
 int motor0Flag = 0, motor1Flag = 0, motor2Flag = 0, motor3Flag = 0, stepper0Flag = 0, stepper1Flag = 0;
 int stepper0WaitingToStopFlag = 0, stepper1WaitingToStopFlag = 0;
-uint8_t USART1RxBuf[RX_BUFF_LENGTH];
+uint8_t USART1RxBuf[RX_BUFF_LENGTH], USART6RxBuf[RX6_BUFF_LENGTH];
 
 uint32_t sonicRangeUp = 200, sonicRangeDown = 180;     //ms * 34 (cm/ms)
 
@@ -190,6 +190,7 @@ void UserInit(void) {
 //    HAL_DMA_Init(&hdma2);
 //    HAL_UART_Receive_IT(&huart1, USART1RxBuf, RX_BUFF_LENGTH);
     HAL_UART_Receive_DMA(&huart1, USART1RxBuf, RX_BUFF_LENGTH);
+    HAL_UART_Receive_DMA(&huart6, USART6RxBuf, RX6_BUFF_LENGTH); //judge system uart
 //    RemoteInit();
 
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
@@ -629,6 +630,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             }
             printf("\n");
 */
+#endif
+#if JUDGE_INFO
+            printf("Judge uart: \n");
+//            for (int i = 0; USART6RxBuf[i] != '\0'; ++i){
+            for (int i = 0; i < RX6_BUFF_LENGTH; ++i){
+                printf("%x ", USART6RxBuf[i]);
+            }
+//            HAL_UART_Receive(&huart5, USART6RxBuf, 50, 1);
+//            printf("\nreceive:\n");
+//            for (int i = 0; i < RX6_BUFF_LENGTH; ++i){
+//                printf("%x", USART6RxBuf[i]);
+//            }
 #endif
         }
         if(resetFeedCont > 0)   resetFeedCont--;

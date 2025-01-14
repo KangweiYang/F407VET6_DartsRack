@@ -181,9 +181,14 @@ extern double posKpStepper1, posKiStepper1, posKdStepper1;
 #define WAIT_TIMES  2
 
 //judge system uart
-#define JUDGE_INFO  1
+#define JUDGE_INFO  0
+#define JUDGE020A_INFO 1
+#define JUDGE0105_INFO 1
+#define JUDGE0001_INFO 1
 #define RX6_BUFF_LENGTH 10000
 
+//remote
+#define UART5_INFO  0
 
 #define TENSION1_DATA_ADDRESS    4
 #define TENSION2_DATA_ADDRESS    3

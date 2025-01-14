@@ -33,6 +33,10 @@ const uint8_t SonicRangeTestSetParas[] = {23, 'S', 'o', 'n', 'i', 'c', 'R', 'a',
 const uint8_t SonicRangeTest[] = {15, 'S', 'o', 'n', 'i', 'c', 'R', 'a', 'n', 'g', 'e', 'T', 'e', 's', 't'};
 const uint8_t ShootTwoDarts[] = {14, 'S', 'h', 'o', 'o', 't', 'T', 'w', 'o', 'D', 'a', 'r', 't', 's'};
 
+const uint8_t JudgeUart020A[] = {0xA5, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x02};
+const uint8_t JudgeUart0105[] = {0xA5, 0x00, 0x00, 0x00, 0x00, 0x05, 0x01};
+const uint8_t JudgeUart0001[] = {0xA5, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00};
+
 int resetFeedCont = -1;
 
 int left3508StopCont = -1, right3508StopCont = -1, releaseFlag = 0;
@@ -82,10 +86,37 @@ uint32_t sonicRangeUp = 200, sonicRangeDown = 180;     //ms * 34 (cm/ms)
 
 int tensionControlFlag = 0;
 
-int16_t RxPointer = 0;
+int16_t RxPointer = 0, Rx6Pointer = 0;
 extern int backCont;
 extern uint8_t _rx_buf[18];
 
+enum {
+    UNKNOWN = 0, RMUC, RMSINGLE, RMAI, RM3V3, RM1V1
+}game_type;
+enum {
+    OUT_OF_GAME = 0, PREPARE, SELF_TEST_15S, COUNTDOWN_5S, IN_GAME, GAME_SETTLE
+}game_progress;
+uint16_t stage_remain_time = 0;
+
+enum SILO_GATE
+{
+    OPEN = 0, CLOSE, MOVING
+}dart_launch_opening_status;
+uint16_t latest_launch_cmd_time = 0;
+uint16_t dart_remaining_time = 0;
+
+/**
+ * @brief    在缓冲区中查找指定字节并复制数据
+ * @note     该函数用于在指定的缓冲区范围内查找特定字节，如果找到，则将从起始指针到找到位置之间的数据复制到目标缓冲区，并更新起始指针的位置。
+ *           如果未找到指定字节，则将整个范围内的数据复制到目标缓冲区。
+ * @param    buf            指向源缓冲区的指针
+ * @param    startPointer   指向起始指针的指针，用于记录查找的起始位置
+ * @param    byteToFind      需要查找的字节
+ * @param    length          查找的长度范围
+ * @param    copyBuf         指向目标缓冲区的指针，用于存放复制的数据
+ * @retval   1               如果找到指定字节，返回1
+ * @retval   0               如果未找到指定字节，返回0
+ */
 int ContainsAndCopy(uint8_t *buf, int16_t *startPointer, uint8_t byteToFind, uint16_t length, uint8_t *copyBuf){
     if(*startPointer > RX_BUFF_LENGTH)    *startPointer = 0;
     for (int i = *startPointer; i < length; ++i){
@@ -95,6 +126,35 @@ int ContainsAndCopy(uint8_t *buf, int16_t *startPointer, uint8_t byteToFind, uin
             return 1;
         }
         copyBuf[i - *startPointer + 1] = buf[i];
+    }
+    return 0;
+}
+
+/**
+ * @brief    在缓冲区中查找指定字节序列并复制数据
+ * @note     该函数用于在指定的缓冲区范围内查找特定字节序列，如果找到，则将从字节序列后的第7个字节开始，长度为字节序列中第2个字节所表示的长度的数据复制到目标缓冲区，并更新起始指针的位置。
+ *           如果未找到指定字节序列，则不进行复制操作。
+ * @param    buf            指向源缓冲区的指针
+ * @param    startPointer   指向起始指针的指针，用于记录查找的起始位置
+ * @param    bytesToFind     指向需要查找的字节序列的指针，至少包含7个字节
+ * @param    length          查找的长度范围
+ * @param    copyBuf         指向目标缓冲区的指针，用于存放复制的数据
+ * @retval   1               如果找到指定字节序列，返回1
+ * @retval   0               如果未找到指定字节序列，返回0
+ */
+int ContainsBytesAndCopy(uint8_t *buf, int16_t *startPointer, uint8_t *bytesToFind, uint16_t length, uint8_t *copyBuf){
+//    if(*startPointer > RX6_BUFF_LENGTH)
+        *startPointer = 0;
+    for (int i = *startPointer; i < length && *startPointer <= RX6_BUFF_LENGTH; ++i){
+        if(buf[i] == bytesToFind[0] && buf[i + 5] == bytesToFind[5] && buf[i + 6] == bytesToFind[6]) {
+            for (int j = 1; j < buf[i + 1] + 1; ++j) {
+                copyBuf[j] = buf[i + j + 6];
+            }
+            copyBuf[0] = buf[i + 1];            //length
+            buf[i] = '\0';                      //avoid receive again
+            *startPointer = i + 1;
+            return 1;
+        }
     }
     return 0;
 }
@@ -603,10 +663,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                    HAL_GPIO_ReadPin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin));
             HAL_UART_Receive_DMA(&huart5, _rx_buf, 18);
             printf("FSM: %d, contFromLastUart: %lld\n", FeedFSMState(), contFromLastUart);
+#if UART5_INFO
             for (int i = 0; i < 18; ++i){
                 printf("%x, ",_rx_buf[i]);
             }
             printf("\n");
+#endif
 //            HAL_UART_Receive(&huart5, _rx_buf, 18, 2);
             RemoteControl();
             /*
@@ -642,6 +704,65 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //            for (int i = 0; i < RX6_BUFF_LENGTH; ++i){
 //                printf("%x", USART6RxBuf[i]);
 //            }
+#endif
+        }
+        uint8_t rx6HandleBuf[RX6_BUFF_LENGTH];
+        if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart0001, RX6_BUFF_LENGTH, rx6HandleBuf)) {
+            //没开赛时:rx6HandleBuf[] = b 51 0 0 0 0 0 0 0 0 0 0 , while the first 'b' = 11 is the length of rx6HandleBuf
+            //rx6HandleBuf[1]:
+            // bit 0-3:比赛类型
+            //• 1:RoboMaster 机甲大师超级对抗赛
+            //• 2:RoboMaster 机甲大师高校单项赛
+            //• 3:ICRA RoboMaster 高校人工智能挑战赛
+            //• 4:RoboMaster 机甲大师高校联盟赛 3V3 对抗 • 5:RoboMaster 机甲大师高校联盟赛步兵对抗 bit 4-7:当前比赛阶段
+            //• 0:未开始比赛
+            //• 1:准备阶段
+            //• 2:十五秒裁判系统自检阶段
+            //• 3:五秒倒计时
+            //• 4:比赛中
+            //• 5:比赛结算中
+            //rx6HandleBuf[2], [3]:当前阶段剩余时间，单位:秒
+            game_type = rx6HandleBuf[1] & 0xF;
+            game_progress = rx6HandleBuf[1] >> 4;
+            stage_remain_time = rx6HandleBuf[2] | (rx6HandleBuf[3] << 8);
+#if JUDGE0001_INFO
+            printf("0001:\n");
+            for (int i = 0; i < rx6HandleBuf[0] + 1; ++i){
+                printf("%x ", rx6HandleBuf[i]);
+            }
+            printf("\ngame_type: %d\n", game_type);
+            printf("game_progress: %d\n", game_progress);
+            printf("stage_remain_time: %d\n", stage_remain_time);
+            printf("\n");
+#endif
+        }
+        if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart0105, RX6_BUFF_LENGTH, rx6HandleBuf)) {
+            //没开赛时:rx6HandleBuf[] = 3 0 0 0, while the first '3' is the length of rx6HandleBuf
+            //rx6HandleBuf[1]:  己方飞镖发射剩余时间，单位:秒
+            dart_remaining_time = rx6HandleBuf[1];
+#if JUDGE0105_INFO
+            printf("0105:\n");
+            for (int i = 0; i < rx6HandleBuf[0] + 1; ++i){
+                printf("%x ", rx6HandleBuf[i]);
+            }
+            printf("\ndart_remaining_time: %d\n", dart_remaining_time);
+            printf("\n");
+#endif
+        }
+        if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart020A, RX6_BUFF_LENGTH, rx6HandleBuf)) {
+            //没开赛时:rx6HandleBuf[] = 6 0 0 0 0 0 0, while the first '6' is the length of rx6HandleBuf
+            //rx6HandleBuf[1]:  1:关闭 2:正在开启或者关闭中 0:已经开启
+            dart_launch_opening_status = rx6HandleBuf[1];
+            //x6HandleBuf[3]: 切换击打目标时的比赛剩余时间，单位:秒，无/未切换动作，默认为 0。
+            latest_launch_cmd_time = rx6HandleBuf[3];
+#if JUDGE020A_INFO
+            printf("020A:\n");
+            for (int i = 0; i < rx6HandleBuf[0] + 1; ++i) {
+                printf("%x ", rx6HandleBuf[i]);
+            }
+            printf("\ndart_launch_opening_status: %d\n", dart_launch_opening_status);
+            printf("latest_launch_cmd_time: %d\n", latest_launch_cmd_time);
+            printf("\n");
 #endif
         }
         if(resetFeedCont > 0)   resetFeedCont--;

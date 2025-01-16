@@ -32,6 +32,8 @@ const uint8_t ResetFeed[] = {10, 'R', 'e', 's', 'e', 't', 'F', 'e', 'e', 'd'};
 const uint8_t SonicRangeTestSetParas[] = {23, 'S', 'o', 'n', 'i', 'c', 'R', 'a', 'n', 'g', 'e', 'T', 'e', 's', 't', 'S', 'e', 't', 'P', 'a', 'r', 'a', 's'};
 const uint8_t SonicRangeTest[] = {15, 'S', 'o', 'n', 'i', 'c', 'R', 'a', 'n', 'g', 'e', 'T', 'e', 's', 't'};
 const uint8_t ShootTwoDarts[] = {14, 'S', 'h', 'o', 'o', 't', 'T', 'w', 'o', 'D', 'a', 'r', 't', 's'};
+const uint8_t SetZeroTension_1[] = {18, 'S', 'e', 't', 'Z', 'e', 'r', 'o', 'T', 'e', 'n', 's', 'i', 'o', 'n', '(', '1', ')'};
+const uint8_t SetZeroTension_2[] = {18, 'S', 'e', 't', 'Z', 'e', 'r', 'o', 'T', 'e', 'n', 's', 'i', 'o', 'n', '(', '2', ')'};
 
 const uint8_t JudgeUart020A[] = {0xA5, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x02};
 const uint8_t JudgeUart0105[] = {0xA5, 0x00, 0x00, 0x00, 0x00, 0x05, 0x01};
@@ -85,6 +87,8 @@ uint8_t USART1RxBuf[RX_BUFF_LENGTH], USART6RxBuf[RX6_BUFF_LENGTH];
 uint32_t sonicRangeUp = 200, sonicRangeDown = 180;     //ms * 34 (cm/ms)
 
 int tensionControlFlag = 0;
+
+int tension1SetZeroFlag = 0, tension2SetZeroFlag = 0;
 
 int16_t RxPointer = 0, Rx6Pointer = 0;
 extern int backCont;
@@ -420,6 +424,14 @@ int main(void) {
     UserInit();
 
     while(1) {
+        if(tension1SetZeroFlag){
+            RS485_1_SetTensionZero();
+            tension1SetZeroFlag = 0;
+        }
+        if(tension2SetZeroFlag){
+            RS485_2_SetTensionZero();
+            tension2SetZeroFlag = 0;
+        }
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
         if(contFromLastUart >= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK && contFromLastUart <= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK + 10){
@@ -539,7 +551,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         }
         if (cont == 10) {
             if(stepper0Flag == 0) StepperSetSpeed(STEPPER1, 0);
-            else if (stepper0Flag && tension1 <= 700 && tension1 >= 5) {
+            else if (stepper0Flag && tension1 <= 700 && tension1 >= -40) {
 //            IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
                 StepperStart(STEPPER1);
                 static double lastBias;
@@ -575,7 +587,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             }
             else if (tension1 > 700)    StepperSetSpeed(STEPPER1, 0);
             if(stepper1Flag == 0) StepperSetSpeed(STEPPER2, 0);
-            else if (stepper1Flag && tensionL <= 700 && tensionL >= 5) {
+            else if (stepper1Flag && tensionL <= 700 && tensionL >= -40) {
                 int32_t tensionLL = tensionL;
                 static double lastBias;
                 if((targetTen[1] - (double) tensionLL) <= STEPPER_CHANGE_TO_SMALL_K && (targetTen[1] - (double) tensionLL) >= -STEPPER_CHANGE_TO_SMALL_K){
@@ -799,19 +811,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 switch (rxHandleBuf[8]) {
                     case '1':
                         furTarTen[0] = StrToInt(rxHandleBuf, 10, ')');
-                        printf("ten: %d\n", furTarTen[0]);
+                        printf("ten[0]: %d\n", furTarTen[0]);
                         break;
                     case '2':
                         furTarTen[1] = StrToInt(rxHandleBuf, 10, ')');
-                        printf("ten: %d\n", furTarTen[1]);
+                        printf("ten[1]: %d\n", furTarTen[1]);
                         break;
                     case '3':
                         furTarTen[2] = StrToInt(rxHandleBuf, 10, ')');
-                        printf("ten: %d\n", furTarTen[2]);
+                        printf("ten[2]: %d\n", furTarTen[2]);
                         break;
                     case '4':
                         furTarTen[3] = StrToInt(rxHandleBuf, 10, ')');
-                        printf("ten: %d\n", furTarTen[3]);
+                        printf("ten[3]: %d\n", furTarTen[3]);
                 }
             } else if (ContainsSubString(rxHandleBuf, TestShoot)) {
                 static int cout1;
@@ -854,12 +866,28 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 static int cout7;
                 cout7++;
                 printf("ShootTwoDarts %d\n", cout7);
+
+            } else if (ContainsSubString(rxHandleBuf, SetZeroTension_1)) {
+                static int cout8;
+                cout8++;
+                printf("SetZeroTension(1) %d\n", cout8);
+//                RS485_1_SetTensionZero();     //因为被抢占导致无效，使用补丁
+                tension1SetZeroFlag = 1;
+            } else if (ContainsSubString(rxHandleBuf, SetZeroTension_2)) {
+                static int cout9;
+                cout9++;
+                printf("SetZeroTension(2) %d\n", cout9);
+//                RS485_2_SetTensionZero();     //因为被抢占导致无效，使用补丁
+                tension2SetZeroFlag = 1;
+
             }
+
         }
     }
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+#if SONIC_ENABLE
     if(GPIO_Pin == SONIC_RANGE_ECHO1_Pin) {
         static uint32_t risingTime;
         if(HAL_GPIO_ReadPin(SONIC_RANGE_ECHO1_GPIO_Port, SONIC_RANGE_ECHO1_Pin) == GPIO_PIN_SET){
@@ -915,6 +943,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     }
     if(GPIO_Pin == SONIC_RANGE_ECHO2_Pin) {
     }
+#endif
 //    if(GPIO_Pin == HALL_BACK_SW_Pin){
 //
 //    }

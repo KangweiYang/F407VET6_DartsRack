@@ -9,6 +9,10 @@
 
 void RS485Init(void);
 
+void RS485_1_SetTensionZero(void);
+
+void RS485_2_SetTensionZero(void);
+
 int32_t RS485_1_GetTension(void);
 
 int32_t RS485_2_GetTension(void);

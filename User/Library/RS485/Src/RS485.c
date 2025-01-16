@@ -9,6 +9,8 @@
 
 uint8_t rs4851GetTensionBuffer[8] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x02, 0xC4, 0x0B};
 uint8_t rs4852GetTensionBuffer[8] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x02, 0xC4, 0x0B};
+uint8_t rs4851SetTensionZero[14] = {0x01, 0x10, 0x00, 0x00, 0x00,0x02, 0x04, 0x00, 0x00, 0x00, 0x00, 0xF3, 0xAF};
+uint8_t rs4852SetTensionZero[14] = {0x01, 0x10, 0x00, 0x00, 0x00,0x02, 0x04, 0x00, 0x00, 0x00, 0x00, 0xF3, 0xAF};
 //uint8_t rs4852GetTensionBuffer[8] = {0x04, 0x03, 0x00, 0x00, 0x00, 0x02};
 
 uint8_t tension1DataAddress = 0, tension2DataAddress = 0;
@@ -49,6 +51,35 @@ void RS485ReceiveState(int channel){
 void RS485SendState(int channel){
     if(channel == 1) HAL_GPIO_WritePin(RS485_1_RX_TX_CONTROL_GPIO_Port, RS485_1_RX_TX_CONTROL_Pin, GPIO_PIN_SET);
     else if(channel == 2)   HAL_GPIO_WritePin(RS485_2_RX_TX_CONTROL_GPIO_Port, RS485_2_RX_TX_CONTROL_Pin, GPIO_PIN_SET);
+}
+
+void RS485_1_SetTensionZero(void){
+    uint8_t rs4851data[11];
+    RS485SendState(1);
+    HAL_Delay(1);
+    HAL_UART_Transmit(HRS485_1_USART, rs4851SetTensionZero, 13, 50);
+    HAL_Delay(1);
+    RS485ReceiveState(1);
+    HAL_UART_Receive(HRS485_1_USART, rs4851data, 9, 30);
+    printf("1receive: ");
+    for (int i = 0; i < 11; ++i)
+        printf("%x,", rs4851data[i]);
+    printf("\n");
+}
+
+void RS485_2_SetTensionZero(void){
+    uint8_t rs4852data[11];
+    RS485SendState(2);
+    HAL_Delay(10);
+    printf("test\n");
+    HAL_UART_Transmit(HRS485_2_USART, rs4852SetTensionZero, 13, 50);
+    HAL_Delay(1);
+    RS485ReceiveState(2);
+    HAL_UART_Receive(HRS485_2_USART, rs4852data, 9, 30);
+    printf("2receive: ");
+    for (int i = 0; i < 11; ++i)
+        printf("%x,", rs4852data[i]);
+    printf("\n");
 }
 
 int32_t RS485_1_GetTension(void){

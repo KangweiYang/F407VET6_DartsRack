@@ -114,7 +114,7 @@ void SystemClock_Config(void);
 
 #define CONT_TO_READY_TO_SHOOT  600         //100ms
 #define SHOOT_BREAK  300         //100ms
-#define START_TENSION   30
+#define START_TENSION   10
 
 //stepper
 #define STEPPER1    &htim1, TIM_CHANNEL_1   //PA8
@@ -149,7 +149,7 @@ void SystemClock_Config(void);
 
 //print define
 #define ADC_DMA_INFO    0
-#define HALL_INFO   0
+#define HALL_INFO   1
 #define TEN_INFO    1
 
 //stepper1,2 dir
@@ -189,6 +189,9 @@ extern double posKpStepper1, posKiStepper1, posKdStepper1;
 
 //remote
 #define UART5_INFO  0
+
+//sonic
+#define SONIC_ENABLE    0
 
 #define TENSION1_DATA_ADDRESS    4
 #define TENSION2_DATA_ADDRESS    3

@@ -7,8 +7,8 @@
 #include "usart.h"
 #include "MotorUnit.h"
 
-#define MIN_PWM -7000
-#define MAX_PWM 7000
+#define MIN_PWM -10000
+#define MAX_PWM 10000
 #define MIN_STEPPER_PWM -3900
 #define MAX_STEPPER_PWM 3900
 

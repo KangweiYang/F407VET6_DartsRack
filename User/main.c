@@ -72,9 +72,11 @@ int shootFlag = 0;
 
 CAN_RxHeaderTypeDef M3508_H_Rx_1;
 CAN_RxHeaderTypeDef M3508_H_Rx_2;
+CAN_RxHeaderTypeDef M3508_H_Rx_3;
 CAN_RxHeaderTypeDef M3508_H_Rx_4;
 uint8_t RXmessage1[8];
 uint8_t RXmessage2[8];
+uint8_t RXmessage3[8];
 uint8_t RXmessage4[8];
 
 uint16_t ADC1Value[100];
@@ -209,6 +211,13 @@ void UserInit(void) {
     M3508_H_Rx_2.FilterMatchIndex = 0;
     M3508_H_Rx_2.Timestamp = 0;
 
+    M3508_H_Rx_3.StdId = 0x203;
+    M3508_H_Rx_3.ExtId = 0x0;
+    M3508_H_Rx_3.IDE = CAN_ID_STD;
+    M3508_H_Rx_3.RTR = CAN_RTR_DATA;
+    M3508_H_Rx_3.FilterMatchIndex = 0;
+    M3508_H_Rx_3.Timestamp = 0;
+
     M3508_H_Rx_4.StdId = 0x204;
     M3508_H_Rx_4.ExtId = 0x0;
     M3508_H_Rx_4.IDE = CAN_ID_STD;
@@ -222,29 +231,21 @@ void UserInit(void) {
     StepperInit(STEPPER2, 1680 - 1);
 //    StepperInit(STEPPER3, 1680 - 1);
     StepperInit(STEPPER4, 1680 - 1);
-    ServoSet(SERVO_GRASP, 120, 10);
-    ServoSet(SERVO_UP_DOWN, 18, 1);                      //Start up
+    ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 10);
+    ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_UP, 1);                      //Start up
     ServoSet(4, 500, 10);
     Double_PID_Init();
 
     StepperSetSpeed(STEPPER1, 0);
     StepperSetSpeed(STEPPER2, 0);
 
-    StepperStart(STEPPER1);
-    StepperStart(STEPPER2);
-//    StepperStart(STEPPER3);
-    StepperStart(STEPPER4);
 
 //    StepperSetSpeed(STEPPER3, 0);
     StepperSetSpeed(STEPPER4, 0);
-
-    StepperSetSpeed(STEPPER1, 0);
     HAL_Delay(100);
 
-    HAL_TIM_Base_Start_IT(&htim6);
 //    StepperTensionControlStart(1);
 //    HAL_TIM_Base_Start_IT(&htim7);
-    HAL_TIM_Base_Start_IT(&htim10);
     stepper0Flag = 1;
     stepper1Flag = 1;
     for (int i = 0; i < 20; ++i){
@@ -258,6 +259,7 @@ void UserInit(void) {
 //    RemoteInit();
 
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+
 }
 
 void ShootOneDart(int dartSerial) {
@@ -278,8 +280,6 @@ void ShootOneDart(int dartSerial) {
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
     DartLoad();
     DartRelease();
-    stepper0Flag = 1;
-    stepper1Flag = 1;
     tensionControlFlag = 1;
     {
         int prevTen1[WAIT_TIMES], prevTenL[WAIT_TIMES], i = 0;
@@ -333,8 +333,10 @@ void GetCur(void) {
         pos[0] = RXmessage1[0] << 8 | RXmessage1[1];
         vel[0] = RXmessage1[2] << 8 | RXmessage1[3];
         current[0] = RXmessage1[4] << 8 || RXmessage1[5];
-//    printf("1RX the CAN data: %02X%02X%02X%02X%02X%02X%02X%02X, pos = %ld, vel = %ld, cur = %ld  ", RXmessage1[0], RXmessage1[1], RXmessage1[2],
-//           RXmessage1[3], RXmessage1[4], RXmessage1[5], RXmessage1[6], RXmessage1[7], pos[0], vel[0], current[0]);
+#if CAN_INFO
+    printf("\n1RX the CAN data: %02X%02X%02X%02X%02X%02X%02X%02X, pos = %ld, vel = %ld, cur = %ld  \n", RXmessage1[0], RXmessage1[1], RXmessage1[2],
+           RXmessage1[3], RXmessage1[4], RXmessage1[5], RXmessage1[6], RXmessage1[7], pos[0], vel[0], current[0]);
+#endif
     }
 
 #if USE_CAN1
@@ -347,8 +349,27 @@ void GetCur(void) {
         pos[1] = RXmessage2[0] << 8 | RXmessage2[1];
         vel[1] = RXmessage2[2] << 8 | RXmessage2[3];
         current[1] = RXmessage2[4] << 8 || RXmessage2[5];
-//        printf("2RX the CAN data: %02X%02X%02X%02X%02X%02X%02X%02X, pos = %ld, vel = %ld, cur = %ld  \n", RXmessage2[0], RXmessage2[1], RXmessage2[2],
-//               RXmessage2[3], RXmessage2[4], RXmessage2[5], RXmessage2[6], RXmessage2[7], pos[1], vel[1], current[1]);
+#if CAN_INFO
+        printf("2RX the CAN data: %02X%02X%02X%02X%02X%02X%02X%02X, pos = %ld, vel = %ld, cur = %ld  \n", RXmessage2[0], RXmessage2[1], RXmessage2[2],
+               RXmessage2[3], RXmessage2[4], RXmessage2[5], RXmessage2[6], RXmessage2[7], pos[1], vel[1], current[1]);
+#endif
+    }
+
+#if USE_CAN1
+    HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &M3508_H_Rx_3, RXmessage3);
+#endif
+#if USE_CAN2
+    HAL_CAN_GetRxMessage(&hcan2, CAN_RX_FIFO0, &M3508_H_Rx_3, RXmessage3);
+#endif
+    if (M3508_H_Rx_3.StdId == 0x203) {
+        pos[2] = RXmessage3[0] << 8 | RXmessage3[1];
+        vel[2] = RXmessage3[2] << 8 | RXmessage3[3];
+        current[2] = RXmessage3[4] << 8 || RXmessage3[5];
+#if CAN_INFO
+        printf("3RX the CAN data: %02X%02X%02X%02X%02X%02X%02X%02X, pos = %ld, vel = %ld, cur = %ld\r\n", RXmessage3[0],
+               RXmessage3[1], RXmessage3[2],
+               RXmessage3[3], RXmessage3[3], RXmessage3[5], RXmessage3[6], RXmessage3[7], pos[3], vel[3], current[3]);
+#endif
     }
 
 #if USE_CAN1
@@ -361,9 +382,11 @@ void GetCur(void) {
         pos[3] = RXmessage4[0] << 8 | RXmessage4[1];
         vel[3] = RXmessage4[2] << 8 | RXmessage4[3];
         current[3] = RXmessage4[4] << 8 || RXmessage4[5];
-//        printf("4RX the CAN data: %02X%02X%02X%02X%02X%02X%02X%02X, pos = %ld, vel = %ld, cur = %ld\r\n", RXmessage4[0],
-//               RXmessage4[1], RXmessage4[2],
-//               RXmessage4[3], RXmessage4[4], RXmessage4[5], RXmessage4[6], RXmessage4[7], pos[3], vel[3], current[3]);
+#if CAN_INFO
+        printf("4RX the CAN data: %02X%02X%02X%02X%02X%02X%02X%02X, pos = %ld, vel = %ld, cur = %ld\r\n", RXmessage4[0],
+               RXmessage4[1], RXmessage4[2],
+               RXmessage4[3], RXmessage4[4], RXmessage4[5], RXmessage4[6], RXmessage4[7], pos[3], vel[3], current[3]);
+#endif
     }
 }
 
@@ -423,6 +446,33 @@ int main(void) {
     printf("hello\n");
     UserInit();
 
+    HAL_Delay(100);
+    //self test
+    motor0Flag = 1;
+    motor1Flag = 1;
+    motor2Flag = 1;
+    motor3Flag = 1;
+    HAL_TIM_Base_Start_IT(&htim6);
+    HAL_TIM_Base_Start_IT(&htim10);
+    for (int i = 0; i < 4; ++i) {
+        tension1 = targetTen[0];
+        tensionL = targetTen[1];
+        targetVel[i] = -500;
+        HAL_Delay(300);
+        targetVel[i] = 500;
+        HAL_Delay(300);
+        targetVel[i] = 0;
+        HAL_Delay(500); //need time to stope to stop
+    }
+    HAL_Delay(1000); //need time to stop
+    StepperStart(STEPPER1);
+    StepperStart(STEPPER2);
+//    StepperStart(STEPPER3);
+    StepperStart(STEPPER4);
+//    motor0Flag = 0;
+//    motor1Flag = 0;
+//    motor2Flag = 0;
+//    motor3Flag = 0;
     while(1) {
         if(tension1SetZeroFlag){
             RS485_1_SetTensionZero();
@@ -437,8 +487,8 @@ int main(void) {
         if(contFromLastUart >= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK && contFromLastUart <= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK + 10){
             stepper0Flag = 1;
             stepper1Flag = 1;
-            targetTen[0] = 200;
-            targetTen[1] = 200;
+            targetTen[0] = 260;
+            targetTen[1] = 260;
             HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
         }
         if(shootFlag == 5){
@@ -530,6 +580,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         GetCur();
         IncrementalPI(0, velKp, velKi, vel[0], targetVel[0]);
         IncrementalPI(1, velKp, velKi, vel[1], targetVel[1]);
+        IncrementalPI(2, velKp, velKi, vel[2], targetVel[2]);
         IncrementalPI(3, velKp, velKi, vel[3], targetVel[3]);
 //        IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
 //        IncrementalPI(5, velKpStepper, velKiStepper, tensionL, targetTen[1]);
@@ -551,7 +602,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         }
         if (cont == 10) {
             if(stepper0Flag == 0) StepperSetSpeed(STEPPER1, 0);
-            else if (stepper0Flag && tension1 <= 700 && tension1 >= -40) {
+            else if (stepper0Flag && tension1 <= 900 && tension1 >= -40) {
 //            IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
                 StepperStart(STEPPER1);
                 static double lastBias;
@@ -559,23 +610,32 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     if(targetTen[0] < 420) {
                         posKpStepper0 = STEPPER1SMALLKP;
                         posKdStepper0 = STEPPER1SMALLKD;
-                    }
-                    else{
+                    } else if(targetTen[0] < 520) {
                         posKpStepper0 = STEPPER1SMALLSMALLKP;
                         posKdStepper0 = STEPPER1SMALLSMALLKD;
+                    } else if(targetTen[0] < 580){
+                            posKpStepper0 = STEPPER1SMALLSMALLSMALLKP;
+                            posKdStepper0 = STEPPER1SMALLSMALLSMALLKD;
+                    } else {
+                        posKpStepper0 = STEPPER1SMALLSMALLSMALLSMALLKP;
+                        posKdStepper0 = STEPPER1SMALLSMALLSMALLSMALLKD;
+                    }
+                    if((tension1 - targetTen[0]) == 1 || (tension1 - targetTen[0]) == -1){
+                        posKpStepper0 = STILL_RATE * posKpStepper0;
+                        posKdStepper0 = STILL_RATE * posKdStepper0;
                     }
                 }
                 else if(((double) tension1 - targetTen[0]) > 2 * STEPPER_CHANGE_TO_SMALL_K || ((double) tension1 - targetTen[0]) < -2 * STEPPER_CHANGE_TO_SMALL_K) {
                     posKpStepper0 = STEPPER1BIGKP;
                     posKdStepper0 = STEPPER1BIGKD;
                 }
-                if(STEPPER1_Kp < -STEPPER1_2_MAX_PUL) {
-                    StepperSetSpeed(STEPPER1, -STEPPER1_2_MAX_PUL);
-                    stepper0Speed = -STEPPER1_2_MAX_PUL;
+                if(STEPPER1_Kp < -STEPPER1_MAX_PUL) {
+                    StepperSetSpeed(STEPPER1, -STEPPER1_MAX_PUL);
+                    stepper0Speed = -STEPPER1_MAX_PUL;
                 }
-                else if(STEPPER1_Kp > STEPPER1_2_MAX_PUL) {
-                    StepperSetSpeed(STEPPER1, STEPPER1_2_MAX_PUL);
-                    stepper0Speed = STEPPER1_2_MAX_PUL;
+                else if(STEPPER1_Kp > STEPPER1_MAX_PUL) {
+                    StepperSetSpeed(STEPPER1, STEPPER1_MAX_PUL);
+                    stepper0Speed = STEPPER1_MAX_PUL;
                 }
                 else {
                     StepperSetSpeed(STEPPER1, STEPPER1_Kp);
@@ -585,32 +645,42 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //            printf("%lf\n", STEPPER1_Kp);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed);
             }
-            else if (tension1 > 700)    StepperSetSpeed(STEPPER1, 0);
+//            else if (tension1 > 900)    StepperSetSpeed(STEPPER1, 0);
             if(stepper1Flag == 0) StepperSetSpeed(STEPPER2, 0);
-            else if (stepper1Flag && tensionL <= 700 && tensionL >= -40) {
+            else if (stepper1Flag && tensionL <= 900 && tensionL >= -40) {
                 int32_t tensionLL = tensionL;
                 static double lastBias;
                 if((targetTen[1] - (double) tensionLL) <= STEPPER_CHANGE_TO_SMALL_K && (targetTen[1] - (double) tensionLL) >= -STEPPER_CHANGE_TO_SMALL_K){
                     if(targetTen[1] < 420) {
                         posKpStepper1 = STEPPER2SMALLKP;
                         posKdStepper1 = STEPPER2SMALLKD;
-                    } else{
+                    } else if(targetTen[1] < 520){
                         posKpStepper1 = STEPPER2SMALLSMALLKP;
                         posKdStepper1 = STEPPER2SMALLSMALLKD;
+                    } else if(targetTen[1] < 580){
+                        posKpStepper1 = STEPPER2SMALLSMALLSMALLKP;
+                        posKdStepper1 = STEPPER2SMALLSMALLSMALLKD;
+                    } else{
+                        posKpStepper1 = STEPPER2SMALLSMALLSMALLSMALLKP;
+                        posKdStepper1 = STEPPER2SMALLSMALLSMALLSMALLKD;
                     }
                 } else if((targetTen[1] - (double) tensionLL) > 2 * STEPPER_CHANGE_TO_SMALL_K || (targetTen[1] - (double) tensionLL) < -2 * STEPPER_CHANGE_TO_SMALL_K){
                     posKpStepper1 = STEPPER2BIGKP;
                     posKdStepper1 = STEPPER2BIGKD;
                 }
+                if((targetTen[1] - tensionLL) == 1 || (targetTen[1] - tensionLL) == -1){
+                    posKpStepper1 = STILL_RATE * posKpStepper0;
+                    posKdStepper1 = STILL_RATE * posKdStepper0;
+                }
 //            IncrementalPI(5, velKpStepper, velKiStepper, tensionL, targetTen[1]);
                 StepperStart(STEPPER2);
-                if(STEPPER2_Kp < -STEPPER1_2_MAX_PUL) {
-                    StepperSetSpeed(STEPPER2, -STEPPER1_2_MAX_PUL);
-                    stepper1Speed = -STEPPER1_2_MAX_PUL;
+                if(STEPPER2_Kp < -STEPPER2_MAX_PUL) {
+                    StepperSetSpeed(STEPPER2, -STEPPER2_MAX_PUL);
+                    stepper1Speed = -STEPPER2_MAX_PUL;
                 }
-                else if(STEPPER2_Kp > STEPPER1_2_MAX_PUL) {
-                    StepperSetSpeed(STEPPER2, STEPPER1_2_MAX_PUL);
-                    stepper1Speed = STEPPER1_2_MAX_PUL;
+                else if(STEPPER2_Kp > STEPPER2_MAX_PUL) {
+                    StepperSetSpeed(STEPPER2, STEPPER2_MAX_PUL);
+                    stepper1Speed = STEPPER2_MAX_PUL;
                 }
                 else    {
                     StepperSetSpeed(STEPPER2, STEPPER2_Kp);
@@ -621,7 +691,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //            printf("%ld, %lf = -20 * (%lf - %ld)\n", tensionL, STEPPER2_Kp, targetTen[1], tensionLL);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionLL, stepper0Speed, stepper1Speed);
             }
-            else if (tensionL > 700)    StepperSetSpeed(STEPPER2, 0);
+//            else if (tensionL > 900)    StepperSetSpeed(STEPPER2, 0);
             cont = 0;
         }
         if(left3508StopCont > 0){
@@ -635,7 +705,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             right3508StopCont--;
         } else if(right3508StopCont == 0){
             right3508StopCont--;
-            targetVel[3] = 0;
+            targetVel[2] = 0;
         }
     }
     if (htim->Instance == htim10.Instance) {     //100ms timer
@@ -643,18 +713,32 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         couut++;
         static int32_t lastTension1, lastTensionL;
         if(backCont){
-            if(backCont == 1){
+            if(backCont <= 1){
                 DartFeedStopDown();
                 printf("STOP FEED STEPPER DOWN\n");
             }
             backCont--;
         }
+        /*
+        printf("0: %d, 1: %d\n", abs(targetTen[0] - lastTension1) - abs(targetTen[0] - tension1), abs(targetTen[1] - lastTensionL) - abs(targetTen[1] - tensionL));
+        if(abs(targetTen[0] - lastTension1) - abs(targetTen[0] - tension1) < -3 &&
+                abs(targetTen[0] - lastTension1) - abs(targetTen[0] - tension1) > -8) {
+            HAL_GPIO_TogglePin(STEPPER1_DIR_GPIO_Port, STEPPER1_DIR_Pin);
+        }
+        if(abs(targetTen[1] - lastTensionL) - abs(targetTen[1] - tensionL) < -3 &&
+                abs(targetTen[1] - lastTensionL) - abs(targetTen[1] - tensionL) > -8) {
+            HAL_GPIO_TogglePin(STEPPER2_DIR_GPIO_Port, STEPPER2_DIR_Pin);
+        }
         if(releaseFlag == 1 && lastTension1 - tension1 >= -1 && lastTension1 - tension1 <= 1 && lastTensionL - tensionL >= -1 && lastTensionL - tensionL <= 1){
             stepper0Flag = 1;
             stepper1Flag = 1;
         }
+         */
+        lastTension1 = tension1;
+        lastTensionL = tensionL;
         if(contFromLastUart > 0)
             contFromLastUart++;
+#if SONIC_ENABLE
         //sonic range
         if(couut % 2 == 0) {
             HAL_GPIO_TogglePin(SONIC_RANGE_TRIG1_GPIO_Port, SONIC_RANGE_TRIG1_Pin);
@@ -663,7 +747,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             HAL_GPIO_TogglePin(SONIC_RANGE_TRIG2_GPIO_Port, SONIC_RANGE_TRIG2_Pin);
         }
         //sonic range
+#endif
         if(couut % 10 == 0){
+#if MOTOR_INFO
+            for (int i = 0; i < 4; ++i){
+                printf("pos[%d] = %d, vel[%d] = %d, current[%d] = %d\n", i, pos[i], i, vel[i], i, current[i]);
+            }
+#endif
 #if HALL_INFO
         printf("BACK: %d, LEFT: %d, RIGHT: %d\n", HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin),
                HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin),
@@ -853,7 +943,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //                DartFeedStartDown();
                 StepperSetSpeed(STEPPER4, -500);
                 StepperStart(STEPPER4);
-                resetFeedCont += 45;
+                resetFeedCont += 40;
             } else if (ContainsSubString(rxHandleBuf, SonicRangeTestSetParas)) {
                 static int cout6;
                 cout6++;
@@ -960,10 +1050,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     }
     if(GPIO_Pin == HALL_RIGHT_SW_Pin){
         printf("RIGHT_HALL_EXTI\n");
-        if(targetVel[3] == RESET_SPEED){
-            targetVel[3] = 0;
-//        } else if (targetVel[3] == -RESET_SPEED){
-//            targetVel[3] = 0;
+        if(targetVel[2] == RESET_SPEED){
+            targetVel[2] = 0;
+//        } else if (targetVel[2] == -RESET_SPEED){
+//            targetVel[2] = 0;
         }
         if(releaseFlag) {
             right3508StopCont = 30;

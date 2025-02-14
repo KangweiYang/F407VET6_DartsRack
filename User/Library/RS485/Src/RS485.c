@@ -114,8 +114,15 @@ int32_t RS485_1_GetTension(void){
     }
      */
     HAL_Delay(10);
-    return (rs4851data[tension1DataAddress] << 24) | (rs4851data[tension1DataAddress + 1] << 16) |
-    (rs4851data[tension1DataAddress + 2] << 8) | (rs4851data[tension1DataAddress + 3] << 0);
+    static int32_t tension;
+    if(((rs4851data[tension1DataAddress] << 24) | (rs4851data[tension1DataAddress + 1] << 16) |
+        (rs4851data[tension1DataAddress + 2] << 8) | (rs4851data[tension1DataAddress + 3] << 0)) <= 1200 &&
+            ((rs4851data[tension1DataAddress] << 24) | (rs4851data[tension1DataAddress + 1] << 16) |
+            (rs4851data[tension1DataAddress + 2] << 8) | (rs4851data[tension1DataAddress + 3] << 0)) >= -1200){
+        tension = (rs4851data[tension1DataAddress] << 24) | (rs4851data[tension1DataAddress + 1] << 16) |
+                  (rs4851data[tension1DataAddress + 2] << 8) | (rs4851data[tension1DataAddress + 3] << 0);
+    }
+    return tension;
 }
 
 int32_t RS485_2_GetTension(void){
@@ -151,8 +158,15 @@ int32_t RS485_2_GetTension(void){
 //        printf("\n");
     }
     */
-    return (rs4852data[tension2DataAddress] << 24) | (rs4852data[tension2DataAddress + 1] << 16) |
-           (rs4852data[tension2DataAddress + 2] << 8) | (rs4852data[tension2DataAddress + 3] << 0);
+    static int32_t tension;
+    if(((rs4852data[tension2DataAddress] << 24) | (rs4852data[tension2DataAddress + 1] << 16) |
+       (rs4852data[tension2DataAddress + 2] << 8) | (rs4852data[tension2DataAddress + 3] << 0)) <= 1200 &&
+            ((rs4852data[tension2DataAddress] << 24) | (rs4852data[tension2DataAddress + 1] << 16) |
+            (rs4852data[tension2DataAddress + 2] << 8) | (rs4852data[tension2DataAddress + 3] << 0)) >= -1200){
+        tension = (rs4852data[tension2DataAddress] << 24) | (rs4852data[tension2DataAddress + 1] << 16) |
+                  (rs4852data[tension2DataAddress + 2] << 8) | (rs4852data[tension2DataAddress + 3] << 0);
+    }
+    return tension;
 }
 
 

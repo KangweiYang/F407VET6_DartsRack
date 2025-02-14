@@ -38,7 +38,7 @@ void DartFeedFSM(void){
         case 1:                 //upward moving
             StepperStart(STEPPER4);
             StepperSetSpeed(STEPPER4, 500);
-            ServoSet(SERVO_UP_DOWN, 20, 0);
+            ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_UP, 0);
             break;
         case 2:                 //dart loading
             StepperSetSpeed(STEPPER4, 0);
@@ -74,7 +74,7 @@ void DartFeedUpUntilSWDetected(void){
     if(feedFSMstate == 1){
         if(HAL_GPIO_ReadPin(DART_STOP_SW_GPIO_Port, DART_STOP_SW_Pin) == GPIO_PIN_RESET){
             feedFSMstate = -1;
-            backCont = 2;
+            backCont = LOAD_BACK_TIME_100MS;
             DartFeedFSM();
         }
     }
@@ -101,7 +101,7 @@ int IsDartReadyToLoad(void){
 }
 
 void DartFeedStopDown(void){
-    if(backCont == 1){
+    if(backCont <= 1){
         feedFSMstate = 3;
         DartFeedFSM();
         return;
@@ -113,12 +113,12 @@ void DartFeedStopDown(void){
 void DartReset(void){
     motor0Flag = 0;
     motor1Flag = 1;
-    motor2Flag = 0;
-    motor3Flag = 1;
+    motor2Flag = 1;
+    motor3Flag = 0;
     targetVel[1] = RESET_SPEED;
-    targetVel[3] = RESET_SPEED;
+    targetVel[2] = RESET_SPEED;
     targetVel[0] = 0;
-    while(targetVel[1] != 0 || targetVel[3] != 0){
+    while(targetVel[1] != 0 || targetVel[2] != 0){
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
     }
@@ -127,10 +127,10 @@ void DartReset(void){
 void DartLoad(void) {
     motor0Flag = 0;
     motor1Flag = 1;
-    motor2Flag = 0;
-    motor3Flag = 1;
+    motor2Flag = 1;
+    motor3Flag = 0;
     targetVel[1] = LOAD_SPEED;
-    targetVel[3] = LOAD_SPEED;
+    targetVel[2] = LOAD_SPEED;
     targetVel[0] = 0;
 //    HAL_Delay(2000); //3700
     while (HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin) != HALL_DETECTED) {
@@ -141,35 +141,40 @@ void DartLoad(void) {
 #if SHOOT_INFO
     printf("DART LOAD OK!\n");
 #endif
-//    HAL_Delay(100);
+    HAL_Delay(LOAD_DELAY);
     motor0Flag = 0;
     motor1Flag = 0;
     motor2Flag = 0;
     motor3Flag = 0;
     targetVel[1] = 0;
-    targetVel[3] = 0;
+    targetVel[2] = 0;
 }
 
 void DartRelease(void) {
     motor0Flag = 0;
     motor1Flag = 1;
-    motor2Flag = 0;
-    motor3Flag = 1;
+    motor2Flag = 1;
+    motor3Flag = 0;
     targetVel[1] = RELEASE_SPEED;
-    targetVel[3] = RELEASE_SPEED;
+    targetVel[2] = RELEASE_SPEED;
     targetVel[0] = 0;
     tension1 = RS485_1_GetTension();
     tensionL = RS485_2_GetTension();
     releaseFlag = 1;
 //    HAL_Delay(delayTime); //2100
-    while (targetVel[1] == RELEASE_SPEED || targetVel[3] == RELEASE_SPEED) {
+    uint32_t time = HAL_GetTick();
+    while (targetVel[1] == RELEASE_SPEED || targetVel[2] == RELEASE_SPEED) {
+        if(stepper0Flag == 0 && HAL_GetTick() - time > RELEASE_DELAY_TENION_CONTROL){    //释放后相隔多少ms后开始拉力闭环控制
+            stepper0Flag = 1;
+            stepper1Flag = 1;
+        }
         if (HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin) != HALL_DETECTED) {
             motor0Flag = 1;
             motor1Flag = 0;
             motor2Flag = 0;
             motor3Flag = 0;
             targetVel[1] = 0;
-            targetVel[3] = 0;
+            targetVel[2] = 0;
             targetVel[0] = SHOOT_SPEED;
             HAL_Delay(200);
             targetVel[0] = 0;
@@ -177,10 +182,10 @@ void DartRelease(void) {
             DartLoad();
             motor0Flag = 0;
             motor1Flag = 1;
-            motor2Flag = 0;
-            motor3Flag = 1;
-            targetVel[1] = RELEASE_SPEED;
-            targetVel[3] = RELEASE_SPEED;
+            motor2Flag = 1;
+            motor3Flag = 0;
+            targetVel[1] = ERROR_RELEASE_SPEED;
+            targetVel[2] = ERROR_RELEASE_SPEED;
             targetVel[0] = 0;
         }
 
@@ -188,14 +193,14 @@ void DartRelease(void) {
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
         if(right3508StopCont == 0){
-            targetVel[3] = 0;
+            targetVel[2] = 0;
         }
         if(left3508StopCont == 0) {
             targetVel[1] = 0;
         }
     }
     releaseFlag = 0;
-    targetVel[3] = 0;
+    targetVel[2] = 0;
     right3508StopCont = -1;
     targetVel[1] = 0;
     left3508StopCont = -1;
@@ -207,7 +212,7 @@ void DartRelease(void) {
     motor2Flag = 0;
     motor3Flag = 0;
     targetVel[1] = 0;
-    targetVel[3] = 0;
+    targetVel[2] = 0;
 }
 
 void DartShoot(void) {

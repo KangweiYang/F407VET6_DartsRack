@@ -63,18 +63,18 @@ void StepperTensionControlStart(int channel) {
 #endif
         }
         if (tension1 > targetTen[0] + STEPPER1_2_MIN_CHANGE) {
-            stepper0Speed = STEPPER1_2_MAX_PUL;
+            stepper0Speed = STEPPER1_MAX_PUL;
             stepper0WaitingToStopFlag = 1;
 #if STEPPER_INFO
             printf("set:%ld, %d\n", tension1, stepper0Speed);
-            printf("speed=%d\n", STEPPER1_2_MAX_PUL);
+            printf("speed=%d\n", STEPPER1_MAX_PUL);
 #endif
         } else if (tension1 < targetTen[0] - STEPPER1_2_MIN_CHANGE) {
-            stepper0Speed = -STEPPER1_2_MAX_PUL;
+            stepper0Speed = -STEPPER1_MAX_PUL;
             stepper0WaitingToStopFlag = 1;
 #if STEPPER_INFO
             printf("set:%ld, %d\n", tension1, stepper0Speed);
-            printf("speed=-%d\n", STEPPER1_2_MAX_PUL);
+            printf("speed=-%d\n", STEPPER1_MAX_PUL);
 #endif
         }
         else{
@@ -82,7 +82,7 @@ void StepperTensionControlStart(int channel) {
             stepper0WaitingToStopFlag = 0;
 #if STEPPER_INFO
             printf("set:%ld, %d\n", tension1, stepper0Speed);
-            printf("speed=-%d\n", STEPPER1_2_MAX_PUL);
+            printf("speed=-%d\n", STEPPER1_MAX_PUL);
 #endif
         }
         if (stepper0Speed < 0) {

@@ -18,21 +18,21 @@ extern int shootFlag;
 
 void DartLoad1(uint16_t delayTime){
     targetVel[1] = 3000;
-    targetVel[3] = 3000;
+    targetVel[2] = 3000;
 //    HAL_Delay(delayTime); //3700
     while(((HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin) == HALL_DETECTED) ||
            HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin) == HALL_DETECTED) &&
-          (targetVel[1] != 0 || targetVel[3] != 0)){
+          (targetVel[1] != 0 || targetVel[2] != 0)){
 
-        if(HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin) != HALL_DETECTED)   targetVel[3] = 0;
+        if(HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin) != HALL_DETECTED)   targetVel[2] = 0;
 
         if(HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin) != HALL_DETECTED) targetVel[1] = 0;
     }
     targetVel[1] = 3000;
-    targetVel[3] = 3000;
+    targetVel[2] = 3000;
     HAL_Delay(delayTime);
     targetVel[1] = 0;
-    targetVel[3] = 0;
+    targetVel[2] = 0;
 }
 
 void ServoInit(void) {
@@ -76,7 +76,7 @@ void ServoSet(int channel, int angle, int delay) {
 
 void ServoGraspDart(void) {
 //    ServoSet(SERVO_UP_DOWN, 65, 200);
-    ServoSet(SERVO_UP_DOWN, 20, 0);                         //STOP up
+    ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_UP, 0);                         //STOP up
 
 //    if(IsDartReadyToLoad() == 0) {
 //        while (!IsDartReadyToLoad()) {
@@ -92,8 +92,8 @@ void ServoGraspDart(void) {
 #if SHOOT_INFO
         printf("GRASP\n");
 #endif
-        ServoSet(SERVO_GRASP, 104, 300);                         //Grasp
-        ServoSet(SERVO_UP_DOWN, 98, 1);                      //Start down
+        ServoSet(SERVO_GRASP, SERVO_GRASP_GRASP, 300);                         //Grasp
+        ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_DOWN, 1);                      //Start down
         DartReset();
         /*
         while((tension1 != targetTen[0]) || (tensionL != targetTen[1])){
@@ -104,8 +104,8 @@ void ServoGraspDart(void) {
         stepper0Flag = 0;
         stepper1Flag = 0;
          */
-        ServoSet(SERVO_GRASP, 120, 500);                        //Release
-        ServoSet(SERVO_UP_DOWN, 18, 1);                      //Start up
+        ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 500);                        //Release
+        ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_UP, 1);                      //Start up
         DartFeedLoadingEnd();
         if(shootFlag < 4)
             DartFeedStartUp();

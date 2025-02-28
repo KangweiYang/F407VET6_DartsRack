@@ -93,7 +93,7 @@ void ServoGraspDart(void) {
         printf("GRASP\n");
 #endif
         ServoSet(SERVO_GRASP, SERVO_GRASP_GRASP, 300);                         //Grasp
-        ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_DOWN, 1);                      //Start down
+        ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_DOWN, 500);                      //Start down
         DartReset();
         /*
         while((tension1 != targetTen[0]) || (tensionL != targetTen[1])){
@@ -104,7 +104,7 @@ void ServoGraspDart(void) {
         stepper0Flag = 0;
         stepper1Flag = 0;
          */
-        ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 500);                        //Release
+        ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 2500);                        //Release
         ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_UP, 1);                      //Start up
         DartFeedLoadingEnd();
         if(shootFlag < 4)

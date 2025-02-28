@@ -44,7 +44,7 @@ int resetFeedCont = -1;
 int left3508StopCont = -1, right3508StopCont = -1, releaseFlag = 0;
 
 uint64_t contFromLastUart = 0;
-int sonicRangeUpCloseFlag = 1, sonicRangeDownOpenFlag = 0;
+int sonicRangeUpCloseFlag = 1, sonicRangeDownOpenFlag = 0, canShootFlag = 0;
 
 int PWMtest = 75;
 double posKp = 0.15, posKi = 0.00, posKd = 1;
@@ -262,20 +262,60 @@ void UserInit(void) {
 
 }
 
-void ShootOneDart(int dartSerial) {
+void ShootFirstDart(){
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+    stepper0Flag = 0;
+    stepper1Flag = 0;
+    targetTen[0] = furTarTen[0];
+    targetTen[1] = furTarTen[0];
+    targetYawPul = furTarYaw[0];
+    DartReset();
+    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+    DartLoad();
+    DartRelease();
+    tensionControlFlag = 1;
+    {
+        int prevTen1[WAIT_TIMES], prevTenL[WAIT_TIMES], i = 0;
+        while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
+               || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
+               || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)) {
+            stepper0Flag = 1;
+            stepper1Flag = 1;
+            prevTen1[i] = tension1;
+            tension1 = RS485_1_GetTension();
+            prevTenL[i] = tensionL;
+            tensionL = RS485_2_GetTension();
+            i++;
+            if(i >= WAIT_TIMES) i = 0;
+            /*
+            printf("Ten1: %d, Ten2: %d, prevTen1   ", tension1, tensionL);
+            for (int j = 0; j < WAIT_TIMES; ++j){
+                printf("%d, ", prevTen1[j]);
+            }
+            printf("///");
+            for (int j = 0; j < WAIT_TIMES; ++j){
+                printf("%d, ", prevTen1[j]);
+            }
+            printf("\n");
+             */
+        }
+    }
+    tensionControlFlag = 0;
+    stepper0Flag = 0;
+    stepper1Flag = 0;
+    DartShoot();
+    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+}
+void ShootOneDart(int dartSerial) {
+    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
     stepper0Flag = 0;
     stepper1Flag = 0;
     targetTen[0] = furTarTen[dartSerial - 1];
     targetTen[1] = furTarTen[dartSerial - 1];
-    /*
-    if(dartSerial == 1) {
-        furTarTen[0] = 0;
-        furTarTen[0] = 0;
-    }
-     */
-    if(dartSerial == 1) targetYawPul = furTarYaw[0];
-    else    targetYawPul = -furTarYaw[dartSerial - 2] + furTarYaw[dartSerial - 1];
+    if(shootFlag == 5) targetYawPul = 0;
+    else if(dartSerial == 1) targetYawPul = furTarYaw[0];
+    else    targetYawPul = furTarYaw[dartSerial - 1];
+    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
     ServoGraspDart();
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
     DartLoad();
@@ -312,6 +352,8 @@ void ShootOneDart(int dartSerial) {
     stepper1Flag = 0;
     DartShoot();
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+    HAL_Delay(300);
+    targetYawPul = -furTarYaw[dartSerial - 1];
 }
 
 /**
@@ -487,20 +529,68 @@ int main(void) {
         if(contFromLastUart >= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK && contFromLastUart <= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK + 10){
             stepper0Flag = 1;
             stepper1Flag = 1;
-            targetTen[0] = 260;
-            targetTen[1] = 260;
+            targetTen[0] = START_TENSION;
+            targetTen[1] = START_TENSION;
             HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
         }
         if(shootFlag == 5){
             ShootOneDart(1);
+            HAL_Delay(1000);
+            stepper0Flag = 2;
+            stepper1Flag = 2;
+            StepperSetSpeed(STEPPER1, BALANCE_OFFSET_SPEED);
+            StepperSetSpeed(STEPPER2, BALANCE_OFFSET_SPEED);
+            HAL_Delay(BALANCE_OFFSET_MS);
+            stepper0Flag = 1;
+            stepper1Flag = 1;
+            targetTen[0] = START_TENSION;
+            targetTen[1] = START_TENSION;
+            HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
             shootFlag = 0;
         }
-        if (sonicRangeDownOpenFlag && contFromLastUart > CONT_TO_READY_TO_SHOOT && furTarTen[1] != 0 && shootFlag < 4){
+        if (canShootFlag && furTarTen[1] != 0 && shootFlag == 1) {
+            printf("shootFlag: %d\n", 1);
+            ShootFirstDart();
+            HAL_Delay(1000);
+            stepper0Flag = 2;
+            stepper1Flag = 2;
+            StepperSetSpeed(STEPPER1, BALANCE_OFFSET_SPEED);
+            StepperSetSpeed(STEPPER2, BALANCE_OFFSET_SPEED);
+            HAL_Delay(BALANCE_OFFSET_MS);
+            stepper0Flag = 1;
+            stepper1Flag = 1;
+            targetTen[0] = START_TENSION;
+            targetTen[1] = START_TENSION;
+            HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+            while (tension1 != START_TENSION || tensionL != START_TENSION){
+                tension1 = RS485_1_GetTension();
+                tensionL = RS485_2_GetTension();
+            }
             shootFlag++;
+        }
+        if (canShootFlag && furTarTen[1] != 0 && shootFlag <= 4 && shootFlag > 1){
             printf("shootFlag: %d\n", shootFlag);
             ShootOneDart(shootFlag);
-            if(shootFlag == 2) {
-                contFromLastUart = CONT_TO_READY_TO_SHOOT - SHOOT_BREAK;
+            HAL_Delay(1000);
+            stepper0Flag = 2;
+            stepper1Flag = 2;
+            StepperSetSpeed(STEPPER1, BALANCE_OFFSET_SPEED);
+            StepperSetSpeed(STEPPER2, BALANCE_OFFSET_SPEED);
+            HAL_Delay(BALANCE_OFFSET_MS);
+            stepper0Flag = 1;
+            stepper1Flag = 1;
+            targetTen[0] = START_TENSION;
+            targetTen[1] = START_TENSION;
+            HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+            while (tension1 != START_TENSION || tensionL != START_TENSION){
+                tension1 = RS485_1_GetTension();
+                tensionL = RS485_2_GetTension();
+            }
+            if(shootFlag == 4)  {
+                shootFlag = 0;
+                canShootFlag = 0;
+            } else{
+                shootFlag++;
             }
         }
     }
@@ -602,7 +692,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         }
         if (cont == 10) {
             if(stepper0Flag == 0) StepperSetSpeed(STEPPER1, 0);
-            else if (stepper0Flag && tension1 <= 900 && tension1 >= -40) {
+            else if (stepper0Flag == 1 && tension1 <= 900 && tension1 >= -40) {
 //            IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
                 StepperStart(STEPPER1);
                 static double lastBias;
@@ -619,10 +709,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     } else {
                         posKpStepper0 = STEPPER1SMALLSMALLSMALLSMALLKP;
                         posKdStepper0 = STEPPER1SMALLSMALLSMALLSMALLKD;
-                    }
-                    if((tension1 - targetTen[0]) == 1 || (tension1 - targetTen[0]) == -1){
-                        posKpStepper0 = STILL_RATE * posKpStepper0;
-                        posKdStepper0 = STILL_RATE * posKdStepper0;
+                        if((tension1 - targetTen[0]) == 1 || (tension1 - targetTen[0]) == -1){
+                            posKpStepper0 = STILL_RATE * posKpStepper0;
+                            posKdStepper0 = STILL_RATE * posKdStepper0;
+                        }
                     }
                 }
                 else if(((double) tension1 - targetTen[0]) > 2 * STEPPER_CHANGE_TO_SMALL_K || ((double) tension1 - targetTen[0]) < -2 * STEPPER_CHANGE_TO_SMALL_K) {
@@ -647,7 +737,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             }
 //            else if (tension1 > 900)    StepperSetSpeed(STEPPER1, 0);
             if(stepper1Flag == 0) StepperSetSpeed(STEPPER2, 0);
-            else if (stepper1Flag && tensionL <= 900 && tensionL >= -40) {
+            else if (stepper1Flag == 1 && tensionL <= 900 && tensionL >= -40) {
                 int32_t tensionLL = tensionL;
                 static double lastBias;
                 if((targetTen[1] - (double) tensionLL) <= STEPPER_CHANGE_TO_SMALL_K && (targetTen[1] - (double) tensionLL) >= -STEPPER_CHANGE_TO_SMALL_K){
@@ -663,14 +753,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     } else{
                         posKpStepper1 = STEPPER2SMALLSMALLSMALLSMALLKP;
                         posKdStepper1 = STEPPER2SMALLSMALLSMALLSMALLKD;
+                        if((targetTen[1] - tensionLL) == 1 || (targetTen[1] - tensionLL) == -1){
+                            posKpStepper1 = STILL_RATE * posKpStepper0;
+                            posKdStepper1 = STILL_RATE * posKdStepper0;
+                        }
                     }
                 } else if((targetTen[1] - (double) tensionLL) > 2 * STEPPER_CHANGE_TO_SMALL_K || (targetTen[1] - (double) tensionLL) < -2 * STEPPER_CHANGE_TO_SMALL_K){
                     posKpStepper1 = STEPPER2BIGKP;
                     posKdStepper1 = STEPPER2BIGKD;
-                }
-                if((targetTen[1] - tensionLL) == 1 || (targetTen[1] - tensionLL) == -1){
-                    posKpStepper1 = STILL_RATE * posKpStepper0;
-                    posKdStepper1 = STILL_RATE * posKdStepper0;
                 }
 //            IncrementalPI(5, velKpStepper, velKiStepper, tensionL, targetTen[1]);
                 StepperStart(STEPPER2);
@@ -761,7 +851,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 #endif
 #if TEN_INFO
 //            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld, Kp: %.1lf, %.1lf, Kd: %.1lf, %.1lf, UpClose: %d, DownOpen: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown, posKpStepper0, posKpStepper1, posKdStepper0, posKdStepper1, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
-            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, sonicRangeUp: %ld, sonicRangeDown: %ld,UpClose: %d, DownOpen: %d, Relay GPIO: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, sonicRangeUp, sonicRangeDown, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag,
+            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, Relay GPIO: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed,
                    HAL_GPIO_ReadPin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin));
             HAL_UART_Receive_DMA(&huart5, _rx_buf, 18);
             printf("FSM: %d, contFromLastUart: %lld\n", FeedFSMState(), contFromLastUart);
@@ -914,6 +1004,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     case '4':
                         furTarTen[3] = StrToInt(rxHandleBuf, 10, ')');
                         printf("ten[3]: %d\n", furTarTen[3]);
+                        canShootFlag = 1;       //仅测试四发连发时使用
+                        shootFlag = 1;         //仅测试四发连发时使用
                 }
             } else if (ContainsSubString(rxHandleBuf, TestShoot)) {
                 static int cout1;
@@ -926,6 +1018,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 static int cout2;
                 cout2++;
                 printf("AbortShoot %d\n", cout2);
+                canShootFlag = 0;
                 shootFlag = 0;
             } else if (ContainsSubString(rxHandleBuf, SetCurYawToZero)) {
                 static int cout3;
@@ -934,6 +1027,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 shootFlag = 0;
                 printf("SetCurYawToZero %d\n", cout3);
                 targetYawPul = furTarYaw[0];
+                furTarYaw[0] = 0;
             } else if (ContainsSubString(rxHandleBuf, ResetFeed)) {
                 static int cout4;
                 cout4++;
@@ -956,7 +1050,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 static int cout7;
                 cout7++;
                 printf("ShootTwoDarts %d\n", cout7);
-
             } else if (ContainsSubString(rxHandleBuf, SetZeroTension_1)) {
                 static int cout8;
                 cout8++;

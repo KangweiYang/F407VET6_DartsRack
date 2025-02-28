@@ -138,10 +138,11 @@ void DartLoad(void) {
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
     }
+    HAL_Delay(LOAD_DELAY);
 #if SHOOT_INFO
     printf("DART LOAD OK!\n");
 #endif
-    HAL_Delay(LOAD_DELAY);
+//    HAL_Delay(LOAD_DELAY);
     motor0Flag = 0;
     motor1Flag = 0;
     motor2Flag = 0;
@@ -163,7 +164,7 @@ void DartRelease(void) {
     releaseFlag = 1;
 //    HAL_Delay(delayTime); //2100
     uint32_t time = HAL_GetTick();
-    while (targetVel[1] == RELEASE_SPEED || targetVel[2] == RELEASE_SPEED) {
+    while (targetVel[1] != 0 || targetVel[2] != 0) {
         if(stepper0Flag == 0 && HAL_GetTick() - time > RELEASE_DELAY_TENION_CONTROL){    //释放后相隔多少ms后开始拉力闭环控制
             stepper0Flag = 1;
             stepper1Flag = 1;
@@ -175,8 +176,8 @@ void DartRelease(void) {
             motor3Flag = 0;
             targetVel[1] = 0;
             targetVel[2] = 0;
-            targetVel[0] = SHOOT_SPEED;
-            HAL_Delay(200);
+            targetVel[0] = -2000;
+            HAL_Delay(500);
             targetVel[0] = 0;
             motor0Flag = 0;
             DartLoad();
@@ -184,9 +185,10 @@ void DartRelease(void) {
             motor1Flag = 1;
             motor2Flag = 1;
             motor3Flag = 0;
-            targetVel[1] = ERROR_RELEASE_SPEED;
-            targetVel[2] = ERROR_RELEASE_SPEED;
+            targetVel[1] = RELEASE_SPEED;
+            targetVel[2] = RELEASE_SPEED;
             targetVel[0] = 0;
+            time = HAL_GetTick();
         }
 
         targetVel[0] = 0;
@@ -229,7 +231,7 @@ void DartShoot(void) {
 #if SHOOT_INFO
     printf("DART SHOOT OK!    system time: %ld ms\n", HAL_GetTick());
 #endif
-    HAL_Delay(100);
+    HAL_Delay(150);
     targetVel[0] = 0;
     motor0Flag = 0;
 }

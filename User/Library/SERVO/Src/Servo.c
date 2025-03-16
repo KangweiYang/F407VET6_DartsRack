@@ -64,7 +64,7 @@ void ServoSet(int channel, int angle, int delay) {
             Delay(delay);
             break;
         case 3:
-            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, angle);
+            __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_3, angle);
             Delay(delay);
             break;
         case 4:

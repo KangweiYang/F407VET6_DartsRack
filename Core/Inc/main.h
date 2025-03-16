@@ -106,7 +106,7 @@ void SystemClock_Config(void);
 #define SONIC_RANGE_ECHO1_Pin GPIO_PIN_0
 #define SONIC_RANGE_ECHO1_GPIO_Port GPIOE
 #define SONIC_RANGE_ECHO1_EXTI_IRQn EXTI0_IRQn
-#define SONIC_RANGE_ECHO2_Pin GPIO_PIN_0
+#define SONIC_RANGE_ECHO2_Pin GPIO_PIN_1
 #define SONIC_RANGE_ECHO2_GPIO_Port GPIOE
 #define SONIC_RANGE_ECHO2_EXTI_IRQn EXTI1_IRQn
 
@@ -114,7 +114,7 @@ void SystemClock_Config(void);
 
 #define CONT_TO_READY_TO_SHOOT  10         //100ms
 #define SHOOT_BREAK  300         //100ms
-#define START_TENSION   50
+#define START_TENSION   70
 
 //stepper
 #define NO_STEPPER_TEST 0
@@ -147,10 +147,13 @@ void SystemClock_Config(void);
 //servo
 #define SERVO_UP_DOWN   1
 #define SERVO_GRASP     2
-#define SERVO_UP_DOWN_UP    20
+#define SERVO_UP_DOWN_UP    20//SERVO_TRIGGER_MIDDLE//20
 #define SERVO_UP_DOWN_DOWN  120
 #define SERVO_GRASP_GRASP   104
-#define SERVO_GRASP_RELEASE 120
+#define SERVO_GRASP_RELEASE 120//SERVO_TRIGGER_MIDDLE//120
+#define SERVO_TRIGGER_SHOOT 20
+#define SERVO_TRIGGER_MIDDLE    40
+#define SERVO_TRIGGER_RESET 65
 
 //#define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
 #define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
@@ -166,7 +169,7 @@ void SystemClock_Config(void);
 #define CAN_INFO    0
 #define MOTOR_INFO  0
 #define ADC_DMA_INFO    0
-#define HALL_INFO   0
+#define HALL_INFO   1
 #define TEN_INFO    1
 
 //stepper1,2 dir
@@ -189,6 +192,7 @@ extern double posKpStepper1, posKiStepper1, posKdStepper1;
 #define HRS485_2_USART  &huart3
 
 #define RS485_INFO  0
+#define RS485_LIGHT_INFO    1
 
 //shoot progress
 #define SHOOT_INFO  1
@@ -202,7 +206,7 @@ extern double posKpStepper1, posKiStepper1, posKdStepper1;
 #define WAIT_TIMES  2           //当连续出现几次目标拉力值时发射
 #define LOAD_BACK_TIME_100MS    1       //2是100ms，1是不后退
 #define BALANCE_OFFSET_SPEED    1900    //弓轮补偿速度
-#define BALANCE_OFFSET_MS   6000     //弓轮平衡补偿时间
+#define BALANCE_OFFSET_MS   4200     //弓轮平衡补偿时间
 
 //judge system uart
 #define JUDGE_INFO  0

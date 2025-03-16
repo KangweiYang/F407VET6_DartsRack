@@ -58,6 +58,7 @@ int32_t tensionL = 0;
 int16_t stepper0Speed = 0;
 int16_t stepper1Speed = 0;
 
+uint8_t ex_rs4851data[11], ex_rs4852data[11], ex_tension1DataAddress = 0, ex_tension2DataAddress = 0;
 
 int16_t current[4], pos[4], vel[6];
 double targetVel[4];
@@ -74,6 +75,8 @@ CAN_RxHeaderTypeDef M3508_H_Rx_1;
 CAN_RxHeaderTypeDef M3508_H_Rx_2;
 CAN_RxHeaderTypeDef M3508_H_Rx_3;
 CAN_RxHeaderTypeDef M3508_H_Rx_4;
+CAN_RxHeaderTypeDef Joint_Motor1234;
+CAN_RxHeaderTypeDef Joint_Motor5678;
 uint8_t RXmessage1[8];
 uint8_t RXmessage2[8];
 uint8_t RXmessage3[8];
@@ -95,6 +98,8 @@ int tension1SetZeroFlag = 0, tension2SetZeroFlag = 0;
 int16_t RxPointer = 0, Rx6Pointer = 0;
 extern int backCont;
 extern uint8_t _rx_buf[18];
+
+int servoTriggerCont = 0;
 
 enum {
     UNKNOWN = 0, RMUC, RMSINGLE, RMAI, RM3V3, RM1V1
@@ -224,6 +229,20 @@ void UserInit(void) {
     M3508_H_Rx_4.RTR = CAN_RTR_DATA;
     M3508_H_Rx_4.FilterMatchIndex = 0;
     M3508_H_Rx_4.Timestamp = 0;
+
+    Joint_Motor1234.StdId = 0x100;
+    Joint_Motor1234.ExtId = 0x0;
+    Joint_Motor1234.IDE = CAN_ID_STD;
+    Joint_Motor1234.RTR = CAN_RTR_DATA;
+    Joint_Motor1234.FilterMatchIndex = 0;
+    Joint_Motor1234.Timestamp = 0;
+
+    Joint_Motor5678.StdId = 0x200;
+    Joint_Motor5678.ExtId = 0x0;
+    Joint_Motor5678.IDE = CAN_ID_STD;
+    Joint_Motor5678.RTR = CAN_RTR_DATA;
+    Joint_Motor5678.FilterMatchIndex = 0;
+    Joint_Motor5678.Timestamp = 0;
     ServoInit();
 
 
@@ -855,6 +874,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                    HAL_GPIO_ReadPin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin));
             HAL_UART_Receive_DMA(&huart5, _rx_buf, 18);
             printf("FSM: %d, contFromLastUart: %lld\n", FeedFSMState(), contFromLastUart);
+#if RS485_LIGHT_INFO
+            printf("tension1DataAddress: %d, rs485_1:", ex_tension1DataAddress);
+            for (int i = 0; i < 11; ++i)
+                printf("%x,", ex_rs4851data[i]);
+            printf("\n");
+            printf("tension2DataAddress: %d, rs485_2:", ex_tension2DataAddress);
+            for (int i = 0; i < 11; ++i)
+                printf("%x,", ex_rs4852data[i]);
+            printf("\n");
+#endif
 #if UART5_INFO
             for (int i = 0; i < 18; ++i){
                 printf("%x, ",_rx_buf[i]);
@@ -963,6 +992,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             StepperSetSpeed(STEPPER4, 0);
         }
         uint8_t rxHandleBuf[RX_BUFF_LENGTH];
+        if(servoTriggerCont < 4)        servoTriggerCont++;
+        else{
+            ServoSet(SERVO_GRASP, SERVO_TRIGGER_MIDDLE, 0);
+            ServoSet(SERVO_UP_DOWN, SERVO_TRIGGER_MIDDLE, 0);
+        }
         if (ContainsAndCopy(USART1RxBuf, &RxPointer, '\n', RX_BUFF_LENGTH, rxHandleBuf)) {
             if (ContainsSubString(rxHandleBuf + 1, SetYaw)) {
                 contFromLastUart = 1;
@@ -1046,6 +1080,20 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 static int cout5;
                 cout5++;
                 printf("SonicRangeTest %d\n", cout5);
+                static int trig;
+                if(trig == 0){
+                    trig = 1;
+                    ServoSet(SERVO_GRASP, SERVO_TRIGGER_RESET, 0);
+                    ServoSet(SERVO_UP_DOWN, SERVO_TRIGGER_RESET, 0);
+                    printf("RESET TRIGGE\n");
+                    servoTriggerCont = 0;
+                } else{
+                    trig = 0;
+                    ServoSet(SERVO_GRASP, SERVO_TRIGGER_SHOOT, 0);
+                    ServoSet(SERVO_UP_DOWN, SERVO_TRIGGER_SHOOT, 0);
+                    printf("SHOOT TRIGGE\n");
+                    servoTriggerCont = 0;
+                }
             } else if (ContainsSubString(rxHandleBuf, ShootTwoDarts)) {
                 static int cout7;
                 cout7++;

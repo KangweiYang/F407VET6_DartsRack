@@ -14,6 +14,7 @@ uint8_t rs4852SetTensionZero[14] = {0x01, 0x10, 0x00, 0x00, 0x00, 0x02, 0x04, 0x
 //uint8_t rs4852GetTensionBuffer[8] = {0x04, 0x03, 0x00, 0x00, 0x00, 0x02};
 
 uint8_t tension1DataAddress = 0, tension2DataAddress = 0;
+extern uint8_t ex_rs4851data[11], ex_rs4852data[11], ex_tension1DataAddress, ex_tension2DataAddress;
 
 extern int tensionControlFlag;
 extern double targetTen[2];
@@ -97,11 +98,17 @@ int32_t RS485_1_GetTension(void) {
     HAL_UART_Transmit(HRS485_1_USART, rs4851GetTensionBuffer, 8, 25);
     RS485ReceiveState(1);
     HAL_UART_Receive(HRS485_1_USART, rs4851data, 11, 30);
-    if (rs4851data[0] == 0x04) tension1DataAddress = 1;
-    else if (rs4851data[0] == 0x03 && rs4851data[1] == 0x04) tension1DataAddress = 2;
-    else if (rs4851data[0] == 0x01 && rs4851data[1] == 0x03 && rs4851data[2] == 0x04) tension1DataAddress = 3;
+    if (rs4851data[0] == 0x01 && rs4851data[1] == 0x03 && rs4851data[2] == 0x04) tension1DataAddress = 3;
     else if (rs4851data[1] == 0x01 && rs4851data[2] == 0x03 && rs4851data[3] == 0x04) tension1DataAddress = 4;
     else if (rs4851data[2] == 0x01 && rs4851data[3] == 0x03 && rs4851data[4] == 0x04) tension1DataAddress = 5;
+    else if (rs4851data[0] == 0x04) tension1DataAddress = 1;
+    else if (rs4851data[0] == 0x03 && rs4851data[1] == 0x04) tension1DataAddress = 2;
+#if RS485_LIGHT_INFO
+    for (int i = 0; i < 11; ++i){
+        ex_rs4851data[i] = rs4851data[i];
+    }
+    ex_tension1DataAddress = tension1DataAddress;
+#endif
 #if RS485_INFO
     if (cont == 1000) {
         printf("1receive: ");
@@ -151,11 +158,17 @@ int32_t RS485_2_GetTension(void) {
     HAL_UART_Transmit(HRS485_2_USART, rs4852GetTensionBuffer, 8, 25);
     RS485ReceiveState(2);
     HAL_UART_Receive(HRS485_2_USART, rs4852data, 9, 30);
-    if (rs4852data[0] == 0x04) tension2DataAddress = 1;
-    else if (rs4852data[0] == 0x03 && rs4852data[1] == 0x04) tension2DataAddress = 2;
-    else if (rs4852data[0] == 0x01 && rs4852data[1] == 0x03 && rs4852data[2] == 0x04) tension2DataAddress = 3;
+    if (rs4852data[0] == 0x01 && rs4852data[1] == 0x03 && rs4852data[2] == 0x04) tension2DataAddress = 3;
     else if (rs4852data[1] == 0x01 && rs4852data[2] == 0x03 && rs4852data[3] == 0x04) tension2DataAddress = 4;
     else if (rs4852data[2] == 0x01 && rs4852data[3] == 0x03 && rs4852data[4] == 0x04) tension2DataAddress = 5;
+    else if (rs4852data[0] == 0x04) tension2DataAddress = 1;
+    else if (rs4852data[0] == 0x03 && rs4852data[1] == 0x04) tension2DataAddress = 2;
+#if RS485_LIGHT_INFO
+    for (int i = 0; i < 11; ++i){
+        ex_rs4852data[i] = rs4852data[i];
+    }
+    ex_tension2DataAddress = tension2DataAddress;
+#endif
 #if RS485_INFO
     if (cont == 1000) {
         printf("2receive: ");

@@ -104,7 +104,7 @@ void ServoGraspDart(void) {
         stepper0Flag = 0;
         stepper1Flag = 0;
          */
-        ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 2500);                        //Release
+        ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 1000);                        //Release
         ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_UP, 1);                      //Start up
         DartFeedLoadingEnd();
         if(shootFlag < 4)

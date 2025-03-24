@@ -85,7 +85,7 @@ uint8_t RXmessage4[8];
 uint16_t ADC1Value[100];
 uint32_t adc1in4, adc1in5, adc1in14, adc1in15;
 
-int motor0Flag = 0, motor1Flag = 0, motor2Flag = 0, motor3Flag = 0, stepper0Flag = 0, stepper1Flag = 0;
+int motor0Flag = 0, motor1Flag = 0, motor2Flag = 0, motor3Flag = 0, stepper0Flag = 0, stepper1Flag = 0, triggerResetFlag = 0;
 int stepper0WaitingToStopFlag = 0, stepper1WaitingToStopFlag = 0;
 uint8_t USART1RxBuf[RX_BUFF_LENGTH], USART6RxBuf[RX6_BUFF_LENGTH];
 
@@ -99,7 +99,7 @@ int16_t RxPointer = 0, Rx6Pointer = 0;
 extern int backCont;
 extern uint8_t _rx_buf[18];
 
-int servoTriggerCont = 0;
+int servoTriggerCont = 5;
 
 enum {
     UNKNOWN = 0, RMUC, RMSINGLE, RMAI, RM3V3, RM1V1
@@ -290,7 +290,7 @@ void ShootFirstDart(){
     targetYawPul = furTarYaw[0];
     DartReset();
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
-    DartLoad();
+    DartLoad(LOAD_SPEED);
     DartRelease();
     tensionControlFlag = 1;
     {
@@ -324,6 +324,8 @@ void ShootFirstDart(){
     stepper1Flag = 0;
     DartShoot();
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+    HAL_Delay(300);
+    targetYawPul = -furTarYaw[0];
 }
 void ShootOneDart(int dartSerial) {
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
@@ -337,7 +339,7 @@ void ShootOneDart(int dartSerial) {
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
     ServoGraspDart();
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
-    DartLoad();
+    DartLoad(LOAD_SPEED);
     DartRelease();
     tensionControlFlag = 1;
     {
@@ -545,6 +547,11 @@ int main(void) {
         }
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
+        if(tension1 == targetTen[0] && tensionL == targetTen[1]){
+            HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+            stepper0Flag = 0;
+            stepper1Flag = 0;
+        }
         if(contFromLastUart >= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK && contFromLastUart <= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK + 10){
             stepper0Flag = 1;
             stepper1Flag = 1;
@@ -608,6 +615,11 @@ int main(void) {
             if(shootFlag == 4)  {
                 shootFlag = 0;
                 canShootFlag = 0;
+                DartFeedStartDown();
+                StepperStart(STEPPER4);
+                resetFeedCont += 128;
+                HAL_Delay(13000);
+                HAL_NVIC_SystemReset();          	/* 重启 */
             } else{
                 shootFlag++;
             }
@@ -687,7 +699,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         static int cont = 0;
         cont++;
         GetCur();
-        IncrementalPI(0, velKp, velKi, vel[0], targetVel[0]);
+        if(!triggerResetFlag)  IncrementalPI(0, velKp, velKi, vel[0], targetVel[0]);
         IncrementalPI(1, velKp, velKi, vel[1], targetVel[1]);
         IncrementalPI(2, velKp, velKi, vel[2], targetVel[2]);
         IncrementalPI(3, velKp, velKi, vel[3], targetVel[3]);
@@ -711,12 +723,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         }
         if (cont == 10) {
             if(stepper0Flag == 0) StepperSetSpeed(STEPPER1, 0);
-            else if (stepper0Flag == 1 && tension1 <= 900 && tension1 >= -40) {
+            else if (stepper0Flag == 1 && tension1 <= TENSION_PROTECT_HIGH && tension1 >= TENSION_PROTECT_LOW) {
 //            IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
                 StepperStart(STEPPER1);
                 static double lastBias;
                 if(((double) tension1 - targetTen[0]) <= STEPPER_CHANGE_TO_SMALL_K && ((double) tension1 - targetTen[0]) >= -STEPPER_CHANGE_TO_SMALL_K){
-                    if(targetTen[0] < 420) {
+                    if(targetTen[0] < 200) {
+                        posKpStepper0 = STEPPER1BIGKP;
+                        posKdStepper0 = STEPPER1BIGKD;
+                    }else if(targetTen[0] < 420) {
                         posKpStepper0 = STEPPER1SMALLKP;
                         posKdStepper0 = STEPPER1SMALLKD;
                     } else if(targetTen[0] < 520) {
@@ -756,11 +771,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             }
 //            else if (tension1 > 900)    StepperSetSpeed(STEPPER1, 0);
             if(stepper1Flag == 0) StepperSetSpeed(STEPPER2, 0);
-            else if (stepper1Flag == 1 && tensionL <= 900 && tensionL >= -40) {
+            else if (stepper1Flag == 1 && tensionL <= TENSION_PROTECT_HIGH && tensionL >= TENSION_PROTECT_LOW) {
                 int32_t tensionLL = tensionL;
                 static double lastBias;
                 if((targetTen[1] - (double) tensionLL) <= STEPPER_CHANGE_TO_SMALL_K && (targetTen[1] - (double) tensionLL) >= -STEPPER_CHANGE_TO_SMALL_K){
-                    if(targetTen[1] < 420) {
+                    if(targetTen[1] < 200) {
+                        posKpStepper1 = STEPPER2BIGKP;
+                        posKdStepper1 = STEPPER2BIGKD;
+                    }else if(targetTen[1] < 420) {
                         posKpStepper1 = STEPPER2SMALLKP;
                         posKdStepper1 = STEPPER2SMALLKD;
                     } else if(targetTen[1] < 520){
@@ -989,14 +1007,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         if(resetFeedCont > 0)   resetFeedCont--;
         else if (resetFeedCont == 0) {
             resetFeedCont = -1;
-            StepperSetSpeed(STEPPER4, 0);
+            DartFeedStopDown();
         }
         uint8_t rxHandleBuf[RX_BUFF_LENGTH];
+#if TEST_SERVO_TRIGGER
         if(servoTriggerCont < 4)        servoTriggerCont++;
         else{
             ServoSet(SERVO_GRASP, SERVO_TRIGGER_MIDDLE, 0);
             ServoSet(SERVO_UP_DOWN, SERVO_TRIGGER_MIDDLE, 0);
         }
+#endif
         if (ContainsAndCopy(USART1RxBuf, &RxPointer, '\n', RX_BUFF_LENGTH, rxHandleBuf)) {
             if (ContainsSubString(rxHandleBuf + 1, SetYaw)) {
                 contFromLastUart = 1;
@@ -1069,7 +1089,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 shootFlag = 0;
                 printf("ResetFeed %d\n", cout4);
 //                DartFeedStartDown();
-                StepperSetSpeed(STEPPER4, -500);
+                DartFeedStartDown();
                 StepperStart(STEPPER4);
                 resetFeedCont += 40;
             } else if (ContainsSubString(rxHandleBuf, SonicRangeTestSetParas)) {
@@ -1080,6 +1100,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 static int cout5;
                 cout5++;
                 printf("SonicRangeTest %d\n", cout5);
+#if TEST_SERVO_TRIGGER
                 static int trig;
                 if(trig == 0){
                     trig = 1;
@@ -1094,6 +1115,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     printf("SHOOT TRIGGE\n");
                     servoTriggerCont = 0;
                 }
+#endif
             } else if (ContainsSubString(rxHandleBuf, ShootTwoDarts)) {
                 static int cout7;
                 cout7++;

@@ -9,8 +9,9 @@
 #include "tim.h"
 #include "../../SERVO/Inc/Servo.h"
 #include "usart.h"
+#include "../../MOTOR/Inc/MotorUnit.h"
 
-extern int motor0Flag, motor1Flag, motor2Flag, motor3Flag, stepper0Flag, stepper1Flag;
+extern int motor0Flag, motor1Flag, motor2Flag, motor3Flag, stepper0Flag, stepper1Flag, triggerResetFlag;
 extern double targetVel[4];
 extern int32_t tension1;
 extern int32_t tensionL;
@@ -124,13 +125,13 @@ void DartReset(void){
     }
 }
 
-void DartLoad(void) {
+void DartLoad(int loadSpeed) {
     motor0Flag = 0;
     motor1Flag = 1;
     motor2Flag = 1;
     motor3Flag = 0;
-    targetVel[1] = LOAD_SPEED;
-    targetVel[2] = LOAD_SPEED;
+    targetVel[1] = loadSpeed;
+    targetVel[2] = loadSpeed;
     targetVel[0] = 0;
 //    HAL_Delay(2000); //3700
     while (HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin) != HALL_DETECTED) {
@@ -152,7 +153,10 @@ void DartLoad(void) {
 }
 
 void DartRelease(void) {
-    motor0Flag = 0;
+    motor0Flag = 1;
+    triggerResetFlag = 1;
+    //老扳机转到即将触发的位置
+    PWM_Renew(0, TRIGGER_FIRST_RESET_PWM);
     motor1Flag = 1;
     motor2Flag = 1;
     motor3Flag = 0;
@@ -160,17 +164,24 @@ void DartRelease(void) {
     targetVel[2] = RELEASE_SPEED;
     targetVel[0] = 0;
     tension1 = RS485_1_GetTension();
+    motor0Flag = 1;
+    triggerResetFlag = 1;
+    PWM_Renew(0, TRIGGER_RESET_PWM);
     tensionL = RS485_2_GetTension();
     releaseFlag = 1;
 //    HAL_Delay(delayTime); //2100
     uint32_t time = HAL_GetTick();
     while (targetVel[1] != 0 || targetVel[2] != 0) {
+        motor0Flag = 1;
+        triggerResetFlag = 1;
+        PWM_Renew(0, TRIGGER_RESET_PWM);
         if(stepper0Flag == 0 && HAL_GetTick() - time > RELEASE_DELAY_TENION_CONTROL){    //释放后相隔多少ms后开始拉力闭环控制
             stepper0Flag = 1;
             stepper1Flag = 1;
         }
         if (HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin) != HALL_DETECTED) {
             motor0Flag = 1;
+            triggerResetFlag = 0;
             motor1Flag = 0;
             motor2Flag = 0;
             motor3Flag = 0;
@@ -179,9 +190,11 @@ void DartRelease(void) {
             targetVel[0] = -2000;
             HAL_Delay(500);
             targetVel[0] = 0;
+            HAL_Delay(500);
             motor0Flag = 0;
-            DartLoad();
-            motor0Flag = 0;
+            DartLoad(ERROR_LOAD_SPEED);
+            motor0Flag = 1;
+            triggerResetFlag = 1;
             motor1Flag = 1;
             motor2Flag = 1;
             motor3Flag = 0;
@@ -206,6 +219,7 @@ void DartRelease(void) {
     right3508StopCont = -1;
     targetVel[1] = 0;
     left3508StopCont = -1;
+    triggerResetFlag = 0;
 #if SHOOT_INFO
     printf("DART RELEASE OK!\n");
 #endif
@@ -231,7 +245,9 @@ void DartShoot(void) {
 #if SHOOT_INFO
     printf("DART SHOOT OK!    system time: %ld ms\n", HAL_GetTick());
 #endif
-    HAL_Delay(150);
+    HAL_Delay(190);
     targetVel[0] = 0;
+    motor0Flag = 1;
+    HAL_Delay(500);
     motor0Flag = 0;
 }

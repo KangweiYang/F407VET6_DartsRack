@@ -27,7 +27,7 @@ void DartFeedStopDown(void);
 
 void DartReset(void);
 
-void DartLoad(void);
+void DartLoad(int loadSpeed);
 
 void DartRelease(void);
 

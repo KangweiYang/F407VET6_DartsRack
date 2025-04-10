@@ -37,11 +37,16 @@ void DartLoad1(uint16_t delayTime){
 
 void ServoInit(void) {
     HAL_TIM_PWM_Init(&htim2);
+    HAL_TIM_PWM_Init(&htim8);
+    HAL_TIM_PWM_Init(&htim12);
     HAL_TIM_Base_Start(&htim2);
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
+    HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Start(&htim12, TIM_CHANNEL_2);
+
 }
 
 void Delay(int32_t delayTime){
@@ -68,7 +73,7 @@ void ServoSet(int channel, int angle, int delay) {
             Delay(delay);
             break;
         case 4:
-            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, angle);
+            __HAL_TIM_SET_COMPARE(&htim12, TIM_CHANNEL_2, angle);
             Delay(delay);
             break;
     }
@@ -104,7 +109,7 @@ void ServoGraspDart(void) {
         stepper0Flag = 0;
         stepper1Flag = 0;
          */
-        ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 1000);                        //Release
+        ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, SERVO_PUTDOWN_DELAY);                        //Release
         ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_UP, 1);                      //Start up
         DartFeedLoadingEnd();
         if(shootFlag < 4)

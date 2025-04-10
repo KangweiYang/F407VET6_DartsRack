@@ -198,6 +198,8 @@ void UserInit(void) {
 
     HAL_TIM_PWM_Init(&htim1);
     HAL_TIM_PWM_Init(&htim3);
+    HAL_TIM_PWM_Init(&htim8);
+    HAL_TIM_PWM_Init(&htim12);
     MotorInit();
     IncPI_Init();
 
@@ -304,6 +306,12 @@ void ShootFirstDart(){
             tension1 = RS485_1_GetTension();
             prevTenL[i] = tensionL;
             tensionL = RS485_2_GetTension();
+            if(tension1 == 0){
+                HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+                HAL_Delay(100);
+                printf("Tension error:RELAY_REOPEN\n");
+                HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+            }
             i++;
             if(i >= WAIT_TIMES) i = 0;
             /*
@@ -486,6 +494,7 @@ void CubeMXInit(void){
     MX_TIM9_Init();
     MX_I2C1_Init();
     MX_TIM6_Init();
+    MX_TIM8_Init();
     MX_CAN2_Init();
     MX_USART2_UART_Init();
     MX_USART3_UART_Init();
@@ -574,26 +583,6 @@ int main(void) {
             HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
             shootFlag = 0;
         }
-        if (canShootFlag && furTarTen[1] != 0 && shootFlag == 1) {
-            printf("shootFlag: %d\n", 1);
-            ShootFirstDart();
-            HAL_Delay(1000);
-            stepper0Flag = 2;
-            stepper1Flag = 2;
-            StepperSetSpeed(STEPPER1, BALANCE_OFFSET_SPEED);
-            StepperSetSpeed(STEPPER2, BALANCE_OFFSET_SPEED);
-            HAL_Delay(BALANCE_OFFSET_MS);
-            stepper0Flag = 1;
-            stepper1Flag = 1;
-            targetTen[0] = START_TENSION;
-            targetTen[1] = START_TENSION;
-            HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
-            while (tension1 != START_TENSION || tensionL != START_TENSION){
-                tension1 = RS485_1_GetTension();
-                tensionL = RS485_2_GetTension();
-            }
-            shootFlag++;
-        }
         if (canShootFlag && furTarTen[1] != 0 && shootFlag <= 4 && shootFlag > 1){
             printf("shootFlag: %d\n", shootFlag);
             ShootOneDart(shootFlag);
@@ -622,6 +611,26 @@ int main(void) {
                 HAL_NVIC_SystemReset();          	/* 重启 */
             } else{
                 shootFlag++;
+            }
+        }
+        if (canShootFlag && furTarTen[1] != 0 && shootFlag == 1) {
+            printf("shootFlag: %d\n", 1);
+            shootFlag++;
+            ShootFirstDart();
+            HAL_Delay(1000);
+            stepper0Flag = 2;
+            stepper1Flag = 2;
+            StepperSetSpeed(STEPPER1, BALANCE_OFFSET_SPEED);
+            StepperSetSpeed(STEPPER2, BALANCE_OFFSET_SPEED);
+            HAL_Delay(BALANCE_OFFSET_MS);
+            stepper0Flag = 1;
+            stepper1Flag = 1;
+            targetTen[0] = START_TENSION;
+            targetTen[1] = START_TENSION;
+            HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+            while (tension1 != START_TENSION || tensionL != START_TENSION){
+                tension1 = RS485_1_GetTension();
+                tensionL = RS485_2_GetTension();
             }
         }
     }
@@ -676,6 +685,93 @@ int StrToInt(uint8_t *buf, int16_t startPointer, uint8_t endChar){
 //int IndexOf(uint8_t *buf, uint8_t )
 
 
+double stepper_Kp[90] = {
+        // 0-160线性保持（0-160实际为430）
+        430,430,430,430,430,430,430,430,430,430,  // 5-95
+        430,430,330,230,200,180,170,              // 105-155
+
+        // 160-170突变区
+        170,                                       // 165
+
+        // 170-420线性下降（170→120）
+        150,150,140,158,154,150,146,142,138,134,  // 175-265
+        130,126,122,118,114,110,106,102,98,94,    // 275-365
+        90,86,82,78,                              // 375-405
+
+        // 420-520二次曲线下降（80→40）
+        74,70,66,63,60,57,54,51,48,45,            // 425-465
+        42,38,37,36,35,34,33,32,31,30,            // 475-515
+
+        // 520-580指数衰减（40→24）
+        29,28,27,29,28,27,26,25,24,23,            // 525-575
+
+        // 580-700对数保持（24）
+        19.5,19,18.5,18,17.5,17,16.5,16,15.5,15,            // 585-675
+        14.6,14.2,                                     // 685-695
+
+        // 700-900反比例衰减（12→12）
+        13.9,13.6,13.4,13.2,13,12.7,12,12,12,12,            // 705-795
+        12,12,12,12,12,12,12,12,12,12             // 805-895
+};
+
+double stepper_Ki[90] = {
+        // 0-160恒定高阻尼
+        150,150,150,150,150,150,150,150,150,150,
+        150,150,150,150,150,150,150,
+
+        // 160-170快速降阻尼
+        90,
+
+        // 170-420线性缓降（90→80）
+        90,89,88,87,86,85,84,83,82,81,
+        80,79,78,77,76,75,74,73,72,71,
+        70,69,68,67,
+
+        // 420-520阻尼回升（80→90）
+        66,67,68,69,70,71,72,73,74,75,
+        76,77,78,79,80,81,82,83,84,85,
+
+        // 520-580过阻尼抑制（90→70）
+        84,82,80,78,76,74,72,70,70,70,
+
+        // 580-700适度阻尼
+        70,70,70,70,70,70,70,70,70,70,
+        70,70,
+
+        // 700-900低阻尼
+        70,65,60,55,50,50,50,50,50,50,
+        50,50,50,50,50,50,50,50,50,50
+};
+
+double stepper_Kd[90] = {
+        // 0-160恒定高阻尼
+        150,150,150,150,150,150,150,150,150,150,
+        150,150,150,150,150,150,150,
+
+        // 160-170快速降阻尼
+        90,
+
+        // 170-420线性缓降（90→80）
+        90,89,88,87,86,85,84,83,82,81,
+        80,79,78,77,76,75,74,73,72,71,
+        70,69,68,67,
+
+        // 420-520阻尼回升（80→90）
+        66,67,68,69,70,71,72,73,74,75,
+        76,77,78,79,80,81,82,83,84,85,
+
+        // 520-580过阻尼抑制（90→70）
+        84,82,80,78,76,74,72,70,70,70,
+
+        // 580-700适度阻尼
+        70,70,70,70,70,70,70,70,70,70,
+        70,70,
+
+        // 700-900低阻尼
+        70,65,60,55,50,50,50,50,50,50,
+        50,50,50,50,50,50,50,50,50,50
+};
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     /*
     if (htim->Instance == htim7.Instance && targetYawPul != 0) {     //100us timer
@@ -722,27 +818,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             targetYawPul++;
         }
         if (cont == 10) {
+            static double integralBias[2];
             if(stepper0Flag == 0) StepperSetSpeed(STEPPER1, 0);
             else if (stepper0Flag == 1 && tension1 <= TENSION_PROTECT_HIGH && tension1 >= TENSION_PROTECT_LOW) {
 //            IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
                 StepperStart(STEPPER1);
                 static double lastBias;
                 if(((double) tension1 - targetTen[0]) <= STEPPER_CHANGE_TO_SMALL_K && ((double) tension1 - targetTen[0]) >= -STEPPER_CHANGE_TO_SMALL_K){
-                    if(targetTen[0] < 200) {
-                        posKpStepper0 = STEPPER1BIGKP;
-                        posKdStepper0 = STEPPER1BIGKD;
-                    }else if(targetTen[0] < 420) {
-                        posKpStepper0 = STEPPER1SMALLKP;
-                        posKdStepper0 = STEPPER1SMALLKD;
-                    } else if(targetTen[0] < 520) {
-                        posKpStepper0 = STEPPER1SMALLSMALLKP;
-                        posKdStepper0 = STEPPER1SMALLSMALLKD;
-                    } else if(targetTen[0] < 580){
-                            posKpStepper0 = STEPPER1SMALLSMALLSMALLKP;
-                            posKdStepper0 = STEPPER1SMALLSMALLSMALLKD;
-                    } else {
-                        posKpStepper0 = STEPPER1SMALLSMALLSMALLSMALLKP;
-                        posKdStepper0 = STEPPER1SMALLSMALLSMALLSMALLKD;
+                    posKpStepper0 = stepper_Kp[(int)targetTen[0] / 10];
+                    posKdStepper0 = stepper_Kd[(int)targetTen[0] / 10];
+                    if(targetTen[0] >= 580){
                         if((tension1 - targetTen[0]) == 1 || (tension1 - targetTen[0]) == -1){
                             posKpStepper0 = STILL_RATE * posKpStepper0;
                             posKdStepper0 = STILL_RATE * posKdStepper0;
@@ -766,6 +851,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     stepper0Speed = STEPPER1_Kp;
                 }
                 lastBias = (double) tension1 - targetTen[0];
+                if(lastBias <= INTEGRAL_START_BIAS && lastBias >= -INTEGRAL_START_BIAS)
+                    integralBias[0] += lastBias - INTEGRAL_BIAS_SUB;
 //            printf("%lf\n", STEPPER1_Kp);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed);
             }
@@ -775,25 +862,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 int32_t tensionLL = tensionL;
                 static double lastBias;
                 if((targetTen[1] - (double) tensionLL) <= STEPPER_CHANGE_TO_SMALL_K && (targetTen[1] - (double) tensionLL) >= -STEPPER_CHANGE_TO_SMALL_K){
-                    if(targetTen[1] < 200) {
-                        posKpStepper1 = STEPPER2BIGKP;
-                        posKdStepper1 = STEPPER2BIGKD;
-                    }else if(targetTen[1] < 420) {
-                        posKpStepper1 = STEPPER2SMALLKP;
-                        posKdStepper1 = STEPPER2SMALLKD;
-                    } else if(targetTen[1] < 520){
-                        posKpStepper1 = STEPPER2SMALLSMALLKP;
-                        posKdStepper1 = STEPPER2SMALLSMALLKD;
-                    } else if(targetTen[1] < 580){
-                        posKpStepper1 = STEPPER2SMALLSMALLSMALLKP;
-                        posKdStepper1 = STEPPER2SMALLSMALLSMALLKD;
-                    } else{
-                        posKpStepper1 = STEPPER2SMALLSMALLSMALLSMALLKP;
-                        posKdStepper1 = STEPPER2SMALLSMALLSMALLSMALLKD;
+                    posKpStepper1 = stepper_Kp[(int)targetTen[1] / 10];
+                    posKdStepper1 = stepper_Kd[(int)targetTen[1] / 10];
+                    if(targetTen[1] >= 580){
                         if((targetTen[1] - tensionLL) == 1 || (targetTen[1] - tensionLL) == -1){
-                            posKpStepper1 = STILL_RATE * posKpStepper0;
-                            posKdStepper1 = STILL_RATE * posKdStepper0;
+                            posKpStepper1 = STILL_RATE * posKpStepper1;
+                            posKdStepper1 = STILL_RATE * posKdStepper1;
                         }
+                    }
+                    if(targetTen[1] > 160 && targetTen[1] <= 170){
+                        posKpStepper1 = STEPPER2_161_170KP;
+                        posKdStepper1 = STEPPER2_161_170KD;
                     }
                 } else if((targetTen[1] - (double) tensionLL) > 2 * STEPPER_CHANGE_TO_SMALL_K || (targetTen[1] - (double) tensionLL) < -2 * STEPPER_CHANGE_TO_SMALL_K){
                     posKpStepper1 = STEPPER2BIGKP;
@@ -815,6 +894,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 }
 //                lastBias = (double) tensionL - targetTen[1];
                 lastBias = targetTen[1] - (double) tensionLL;
+                if(lastBias <= INTEGRAL_START_BIAS && lastBias >= -INTEGRAL_START_BIAS)
+                    integralBias[1] += lastBias - INTEGRAL_BIAS_SUB;
 //            printf("%ld, %lf = -20 * (%lf - %ld)\n", tensionL, STEPPER2_Kp, targetTen[1], tensionLL);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionLL, stepper0Speed, stepper1Speed);
             }
@@ -887,9 +968,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin));
 #endif
 #if TEN_INFO
-//            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld, Kp: %.1lf, %.1lf, Kd: %.1lf, %.1lf, UpClose: %d, DownOpen: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown, posKpStepper0, posKpStepper1, posKdStepper0, posKdStepper1, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
-            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, Relay GPIO: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed,
-                   HAL_GPIO_ReadPin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin));
+            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld, Kp: %.1lf, %.1lf, Kd: %.1lf, %.1lf, UpClose: %d, DownOpen: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown, posKpStepper0, posKpStepper1, posKdStepper0, posKdStepper1, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
+//            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, Relay GPIO: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed,
+//                   HAL_GPIO_ReadPin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin));
             HAL_UART_Receive_DMA(&huart5, _rx_buf, 18);
             printf("FSM: %d, contFromLastUart: %lld\n", FeedFSMState(), contFromLastUart);
 #if RS485_LIGHT_INFO
@@ -1011,10 +1092,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         }
         uint8_t rxHandleBuf[RX_BUFF_LENGTH];
 #if TEST_SERVO_TRIGGER
-        if(servoTriggerCont < 4)        servoTriggerCont++;
+        if(servoTriggerCont < SERVO_TRIGGER_MIDDLE_DELAY)        servoTriggerCont++;
         else{
-            ServoSet(SERVO_GRASP, SERVO_TRIGGER_MIDDLE, 0);
-            ServoSet(SERVO_UP_DOWN, SERVO_TRIGGER_MIDDLE, 0);
+            ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_MIDDLE, 0);
+            ServoSet(SERVO_4, SERVO_TRIGGER_MIDDLE, 0);
         }
 #endif
         if (ContainsAndCopy(USART1RxBuf, &RxPointer, '\n', RX_BUFF_LENGTH, rxHandleBuf)) {
@@ -1104,14 +1185,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 static int trig;
                 if(trig == 0){
                     trig = 1;
-                    ServoSet(SERVO_GRASP, SERVO_TRIGGER_RESET, 0);
-                    ServoSet(SERVO_UP_DOWN, SERVO_TRIGGER_RESET, 0);
+                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_RESET, 0);
+                    ServoSet(SERVO_4, SERVO_TRIGGER_RESET, 0);
                     printf("RESET TRIGGE\n");
                     servoTriggerCont = 0;
                 } else{
                     trig = 0;
-                    ServoSet(SERVO_GRASP, SERVO_TRIGGER_SHOOT, 0);
-                    ServoSet(SERVO_UP_DOWN, SERVO_TRIGGER_SHOOT, 0);
+                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_SHOOT, 0);
+                    ServoSet(SERVO_4, SERVO_TRIGGER_SHOOT, 0);
                     printf("SHOOT TRIGGE\n");
                     servoTriggerCont = 0;
                 }
@@ -1208,7 +1289,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
             targetVel[1] = 0;
         }
         if(releaseFlag) {
-            left3508StopCont = 30;
+            left3508StopCont = MOTOR_RELEASE_DELAY;
         }
     }
     if(GPIO_Pin == HALL_RIGHT_SW_Pin){
@@ -1219,7 +1300,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 //            targetVel[2] = 0;
         }
         if(releaseFlag) {
-            right3508StopCont = 30;
+            right3508StopCont = MOTOR_RELEASE_DELAY;
         }
     }
 }

@@ -119,6 +119,7 @@ void SystemClock_Config(void);
 #define START_TENSION   30
 
 //stepper
+#define STEPPER_PARAS_TEST  0
 #define NO_STEPPER_TEST 0
 #define STEPPER1    &htim1, TIM_CHANNEL_1   //PA8
 #define STEPPER2    &htim3, TIM_CHANNEL_1   //PA6
@@ -181,10 +182,10 @@ void SystemClock_Config(void);
 #define MOTOR_INFO  0
 #define ADC_DMA_INFO    0
 #define HALL_INFO   1
-#define TEN_INFO    1
+#define TEN_INFO    0
 
 //stepper1,2 dir
-#define STEPPER_INFO    1
+#define STEPPER_INFO    0
 
 #define STEPPER1_MAX_PUL  1900
 #define STEPPER2_MAX_PUL  STEPPER1_MAX_PUL*STEPPER2_VS_1
@@ -195,16 +196,19 @@ void SystemClock_Config(void);
 extern double lastBias;
 extern double posKpStepper0, posKiStepper0, posKdStepper0;
 extern double posKpStepper1, posKiStepper1, posKdStepper1;
-#define STEPPER1_Kp   (-posKpStepper0 * ((double) tension1 - targetTen[0]) + posKiStepper0 * integralBias[0] + posKdStepper0 * ((double) tension1 - targetTen[0] - lastBias))
-#define STEPPER2_Kp   (-posKpStepper1 * (targetTen[1] - (double) tensionLL) + posKiStepper1 * integralBias[1] + posKdStepper1 * (targetTen[1] - (double) tensionLL - lastBias))
-#define INTEGRAL_BIAS_SUB   0.4
+extern double integralBias[2];
+#define STEPPER1_Kp   (-posKpStepper0 * ((double) tension1 - targetTen[0]) - posKiStepper0 * integralBias[0] + posKdStepper0 * ((double) tension1 - targetTen[0] - lastBias))
+#define STEPPER2_Kp   (-posKpStepper1 * (targetTen[1] - (double) tensionLL) - posKiStepper1 * integralBias[1] + posKdStepper1 * (targetTen[1] - (double) tensionLL - lastBias))
+#define INTEGRAL_BIAS_SUB   0.8
 #define INTEGRAL_START_BIAS 10
+#define INTEGRAL_MAX    13
+#define KI_DIVIDE   8
 //rs485
 #define HRS485_1_USART  &huart2
 #define HRS485_2_USART  &huart3
 
 #define RS485_INFO  0
-#define RS485_LIGHT_INFO    1
+#define RS485_LIGHT_INFO    0
 
 #define TENSION_PROTECT_HIGH    900
 #define TENSION_PROTECT_LOW     10  //当拉力值不在这两个范围内时，失能两步进电机
@@ -213,14 +217,14 @@ extern double posKpStepper1, posKiStepper1, posKdStepper1;
 #define SHOOT_INFO  1
 #define RESET_SPEED 700
 #define LOAD_SPEED  3400
-#define LOAD_DELAY  0
+#define LOAD_DELAY  100
 #define RELEASE_SPEED   -3000
 #define ERROR_LOAD_SPEED   2000
 #define RELEASE_DELAY_TENION_CONTROL    700    //释放后相隔多少ms后开始拉力闭环控制
 #define SHOOT_SPEED -3000
-#define WAIT_TIMES  2           //当连续出现几次目标拉力值时发射
+#define WAIT_TIMES  3           //当连续出现几次目标拉力值时发射
 #define LOAD_BACK_TIME_100MS    1       //2是100ms，1是不后退
-#define BALANCE_OFFSET_SPEED    1900    //弓轮补偿速度
+#define BALANCE_OFFSET_SPEED    0//1900    //弓轮补偿速度
 #define BALANCE_OFFSET_MS   0//4200     //弓轮平衡补偿时间
 #define TRIGGER_FIRST_RESET_PWM -330   //老扳机慢速初始瞬间复位电流
 #define TRIGGER_RESET_PWM   -220      //老扳机慢速复位电流
@@ -231,13 +235,15 @@ extern double posKpStepper1, posKiStepper1, posKdStepper1;
 
 //judge system uart
 #define JUDGE_INFO  0
-#define JUDGE020A_INFO 1
-#define JUDGE0105_INFO 1
-#define JUDGE0001_INFO 1
+#define JUDGE020A_INFO 0
+#define JUDGE0105_INFO 0
+#define JUDGE0001_INFO 0
 #define RX6_BUFF_LENGTH 10000
 
 //remote
-#define UART5_INFO  0
+#define UART5_INFO  1
+#define USE_REMOTE  0
+#define AIMBOT_MODE 1 // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
 
 //sonic
 #define SONIC_ENABLE    0

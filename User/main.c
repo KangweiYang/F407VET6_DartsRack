@@ -1,4 +1,5 @@
 #include "stdlib.h"
+#include "string.h"
 #include "main.h"
 #include "dma.h"
 #include "tim.h"
@@ -503,7 +504,6 @@ void CubeMXInit(void){
     MX_USB_OTG_FS_PCD_Init();
     MX_TIM10_Init();
     MX_UART4_Init();
-    MX_UART5_Init();
     MX_USART6_UART_Init();
     MX_TIM7_Init();
 }
@@ -518,6 +518,7 @@ int main(void) {
     printf("hello\n");
     UserInit();
 
+#if !STEPPER_PARAS_TEST
     HAL_Delay(100);
     //self test
     motor0Flag = 1;
@@ -537,6 +538,7 @@ int main(void) {
         HAL_Delay(500); //need time to stope to stop
     }
     HAL_Delay(1000); //need time to stop
+#endif
     StepperStart(STEPPER1);
     StepperStart(STEPPER2);
 //    StepperStart(STEPPER3);
@@ -695,12 +697,12 @@ double stepper_Kp[90] = {
 
         // 170-420线性下降（170→120）
         150,150,140,158,154,150,146,142,138,134,  // 175-265
-        130,126,122,118,114,110,106,102,98,94,    // 275-365
-        90,86,82,78,                              // 375-405
+        130,126,122,118,114,110,106,102,98,84,    // 275-365
+        70,66,62,58,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
-        74,70,66,63,60,57,54,51,48,45,            // 425-465
-        42,38,37,36,35,34,33,32,31,30,            // 475-515
+        54,50,46,43,37,30,30, 30,30, 30,            // 425-465
+        28,27,26,25,24,23,27,27,26,25,            // 475-515
 
         // 520-580指数衰减（40→24）
         29,28,27,29,28,27,26,25,24,23,            // 525-575
@@ -715,32 +717,32 @@ double stepper_Kp[90] = {
 };
 
 double stepper_Ki[90] = {
-        // 0-160恒定高阻尼
-        150,150,150,150,150,150,150,150,150,150,
-        150,150,150,150,150,150,150,
+        // 0-160线性保持（0-160实际为430）
+        430,430,430,430,430,430,430,430,430,430,  // 5-95
+        430,430,330,230,200,180,170,              // 105-155
 
-        // 160-170快速降阻尼
-        90,
+        // 160-170突变区
+        170,                                       // 165
 
-        // 170-420线性缓降（90→80）
-        90,89,88,87,86,85,84,83,82,81,
-        80,79,78,77,76,75,74,73,72,71,
-        70,69,68,67,
+        // 170-420线性下降（170→120）
+        150,150,140,158,154,140,136,132,128,124,  // 175-265
+        120,116,112,108,104,101,98,95,92,84,    // 275-365
+        70,66,62,58,                              // 375-405
 
-        // 420-520阻尼回升（80→90）
-        66,67,68,69,70,71,72,73,74,75,
-        76,77,78,79,80,81,82,83,84,85,
+        // 420-520二次曲线下降（80→40）
+        54,50,46,43,42,41,40,39,38, 35,            // 425-465
+        33,32,32,30,29,28,28,27,31,30,            // 475-515
 
-        // 520-580过阻尼抑制（90→70）
-        84,82,80,78,76,74,72,70,70,70,
+        // 520-580指数衰减（40→24）
+        29,28,27,29,28,27,26,25,24,23,            // 525-575
 
-        // 580-700适度阻尼
-        70,70,70,70,70,70,70,70,70,70,
-        70,70,
+        // 580-700对数保持（24）
+        19.5,19,18.5,18,17.5,17,16.5,16,15.5,15,            // 585-675
+        14.6,14.2,                                     // 685-695
 
-        // 700-900低阻尼
-        70,65,60,55,50,50,50,50,50,50,
-        50,50,50,50,50,50,50,50,50,50
+        // 700-900反比例衰减（12→12）
+        13.9,13.6,13.4,13.2,13,12.7,12,12,12,12,            // 705-795
+        12,12,12,12,12,12,12,12,12,12             // 805-895
 };
 
 double stepper_Kd[90] = {
@@ -771,6 +773,88 @@ double stepper_Kd[90] = {
         70,65,60,55,50,50,50,50,50,50,
         50,50,50,50,50,50,50,50,50,50
 };
+#include <stdint.h>
+#include <stddef.h>
+
+typedef struct CarData {
+    uint8_t header;
+    uint8_t mode; // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
+    uint8_t CRC8;
+
+    uint8_t status;
+    uint8_t number; // 第number号飞镖
+    uint8_t dune;   // 0：完全展开 1：完全关闭 2：正在进行时
+    uint16_t CRC16;
+} CarData;
+
+
+// CRC8计算函数（多项式0x07）
+uint8_t computeCRC8(const uint8_t *data, size_t len) {
+    uint8_t crc = 0x00; // 初始值
+    for (size_t i = 0; i < len; i++) {
+        crc ^= data[i];
+        for (int j = 0; j < 8; j++) {
+            if (crc & 0x80) {
+                crc = (crc << 1) ^ 0x07; // 多项式0x07
+            } else {
+                crc <<= 1;
+            }
+        }
+    }
+    return crc;
+}
+
+// CRC16计算函数（CRC-CCITT，多项式0x1021）
+uint16_t computeCRC16(const uint8_t *data, size_t len) {
+    uint16_t crc = 0xFFFF; // 初始值
+    for (size_t i = 0; i < len; i++) {
+        crc ^= (uint16_t)data[i] << 8; // 处理高位在前
+        for (int j = 0; j < 8; j++) {
+            if (crc & 0x8000) {
+                crc = (crc << 1) ^ 0x1021; // 多项式0x1021
+            } else {
+                crc <<= 1;
+            }
+        }
+    }
+    return crc;
+}
+
+void PrintCarData(CarData *data) {
+    uint8_t *p = (uint8_t*)data;
+    for (int i = 0; i < sizeof(CarData); i++) {
+        printf("%02X ", p[i]);
+    }
+    printf("\n");
+}
+
+void CarDataHandle(CarData *cardata, uint8_t number, uint8_t dune) {
+    cardata->header = 0xA5;
+    cardata->mode = 0x01;
+
+    // 计算CRC8（覆盖header和mode）
+    uint8_t crc8_data[2] = {cardata->header, cardata->mode};
+    cardata->CRC8 = computeCRC8(crc8_data, 2);
+
+    cardata->status = 0x00;
+    cardata->number = number;
+    cardata->dune = dune;
+
+    // 计算CRC16（覆盖status、number、dune）
+    uint8_t crc16_data[3] = {cardata->status, cardata->number, cardata->dune};
+    cardata->CRC16 = computeCRC16(crc16_data, 3);
+}
+
+void AimbotSendData(CarData *carData,uint8_t len)
+{
+    static uint8_t* dataAddr=0,i=0;
+    for(i=0;i<len;i++) //使用sizeof计算结构体
+    {
+        dataAddr = (((uint8_t *)&carData->header)+i); //从帧头开始 然后依次向下指向
+        HAL_UART_Transmit(&huart5,dataAddr,1,20);	//发送接收到的数据
+        while(__HAL_UART_GET_FLAG(&huart5,UART_FLAG_TC)!=SET);		//等待发送结束
+    }
+}
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     /*
@@ -826,6 +910,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 static double lastBias;
                 if(((double) tension1 - targetTen[0]) <= STEPPER_CHANGE_TO_SMALL_K && ((double) tension1 - targetTen[0]) >= -STEPPER_CHANGE_TO_SMALL_K){
                     posKpStepper0 = stepper_Kp[(int)targetTen[0] / 10];
+                    posKiStepper0 = stepper_Kp[(int)targetTen[0] / 10] / KI_DIVIDE;
                     posKdStepper0 = stepper_Kd[(int)targetTen[0] / 10];
                     if(targetTen[0] >= 580){
                         if((tension1 - targetTen[0]) == 1 || (tension1 - targetTen[0]) == -1){
@@ -834,7 +919,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                         }
                     }
                 }
-                else if(((double) tension1 - targetTen[0]) > 2 * STEPPER_CHANGE_TO_SMALL_K || ((double) tension1 - targetTen[0]) < -2 * STEPPER_CHANGE_TO_SMALL_K) {
+                else if(((double) tension1 - targetTen[0]) > 3 * STEPPER_CHANGE_TO_SMALL_K || ((double) tension1 - targetTen[0]) < -3 * STEPPER_CHANGE_TO_SMALL_K) {
                     posKpStepper0 = STEPPER1BIGKP;
                     posKdStepper0 = STEPPER1BIGKD;
                 }
@@ -853,6 +938,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 lastBias = (double) tension1 - targetTen[0];
                 if(lastBias <= INTEGRAL_START_BIAS && lastBias >= -INTEGRAL_START_BIAS)
                     integralBias[0] += lastBias - INTEGRAL_BIAS_SUB;
+                else    integralBias[0] -= INTEGRAL_BIAS_SUB;
+                if(integralBias[0] <= -INTEGRAL_MAX)    integralBias[0] = -INTEGRAL_MAX;
+                if(integralBias[0] >= INTEGRAL_MAX) integralBias[0] = INTEGRAL_MAX;
 //            printf("%lf\n", STEPPER1_Kp);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed);
             }
@@ -863,6 +951,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 static double lastBias;
                 if((targetTen[1] - (double) tensionLL) <= STEPPER_CHANGE_TO_SMALL_K && (targetTen[1] - (double) tensionLL) >= -STEPPER_CHANGE_TO_SMALL_K){
                     posKpStepper1 = stepper_Kp[(int)targetTen[1] / 10];
+                    posKiStepper1 = stepper_Kp[(int)targetTen[1] / 10] / KI_DIVIDE;
                     posKdStepper1 = stepper_Kd[(int)targetTen[1] / 10];
                     if(targetTen[1] >= 580){
                         if((targetTen[1] - tensionLL) == 1 || (targetTen[1] - tensionLL) == -1){
@@ -896,6 +985,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 lastBias = targetTen[1] - (double) tensionLL;
                 if(lastBias <= INTEGRAL_START_BIAS && lastBias >= -INTEGRAL_START_BIAS)
                     integralBias[1] += lastBias - INTEGRAL_BIAS_SUB;
+                else    integralBias[1] -= INTEGRAL_BIAS_SUB;
+                if(integralBias[1] <= -INTEGRAL_MAX)    integralBias[1] = -INTEGRAL_MAX;
+                if(integralBias[1] >= INTEGRAL_MAX) integralBias[1] = INTEGRAL_MAX;
 //            printf("%ld, %lf = -20 * (%lf - %ld)\n", tensionL, STEPPER2_Kp, targetTen[1], tensionLL);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionLL, stepper0Speed, stepper1Speed);
             }
@@ -968,11 +1060,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin));
 #endif
 #if TEN_INFO
-            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld, Kp: %.1lf, %.1lf, Kd: %.1lf, %.1lf, UpClose: %d, DownOpen: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown, posKpStepper0, posKpStepper1, posKdStepper0, posKdStepper1, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
+            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, sonicRangeUp: %ld, sonicRangeDown: %ld, Kp: %.1lf, %.1lf, Ki: %.1lf, %.1lf, Kd: %.1lf, %.1lf, UpClose: %d, DownOpen: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], sonicRangeUp, sonicRangeDown, posKpStepper0, posKpStepper1, posKiStepper0, posKiStepper1, posKdStepper0, posKdStepper1, sonicRangeUpCloseFlag, sonicRangeDownOpenFlag);
 //            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, Relay GPIO: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed,
 //                   HAL_GPIO_ReadPin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin));
-            HAL_UART_Receive_DMA(&huart5, _rx_buf, 18);
             printf("FSM: %d, contFromLastUart: %lld\n", FeedFSMState(), contFromLastUart);
+#endif
 #if RS485_LIGHT_INFO
             printf("tension1DataAddress: %d, rs485_1:", ex_tension1DataAddress);
             for (int i = 0; i < 11; ++i)
@@ -983,14 +1075,55 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 printf("%x,", ex_rs4852data[i]);
             printf("\n");
 #endif
+            printf("\n");
+            HAL_UART_Receive_DMA(&huart5, _rx_buf, 18);
+            CarData *car_data;
+            CarDataHandle(&car_data, 1, 1);
+            AimbotSendData(&car_data, 8);
+//            HAL_UART_Receive(&huart5, _rx_buf, 18, 2);
 #if UART5_INFO
             for (int i = 0; i < 18; ++i){
                 printf("%x, ",_rx_buf[i]);
             }
-            printf("\n");
+
+// 在数据接收后的处理逻辑中：
+            if (_rx_buf[0] == 0xA5) {
+                // 提取 yaw_error（大端转小端）
+                uint8_t *yaw_ptr = &_rx_buf[2];  // 原数据：0x90,0xA0,0x2A,0xC4（大端）
+
+                // 手动反转字节序（大端 -> 小端）
+                union {
+                    uint32_t u;
+                    float f;
+                } yaw_convert;
+
+                // 将反转后的字节按大端序组合成uint32
+                yaw_convert.u = (yaw_ptr[3] << 24) |  // 原第4字节（0xC4）移到最高位
+                                (yaw_ptr[2] << 16) |  // 原第3字节（0x2A）
+                                (yaw_ptr[1] << 8)  |  // 原第2字节（0xA0）
+                                yaw_ptr[0];          // 原第1字节（0x90）在最低位
+
+                float yaw_error = yaw_convert.f;     // 通过联合体转为float
+
+                // 打印调试信息
+                printf("yaw_bytes: %02X %02X %02X %02X\n",
+                       yaw_ptr[3], yaw_ptr[2], yaw_ptr[1], yaw_ptr[0]);
+                printf("yaw_uint: %08lX\n", (uint32_t)yaw_convert.u);
+
+                // 提取 target_status
+                uint8_t target_status = _rx_buf[6];
+
+                printf("yaw_error = %f\n", yaw_error);
+                printf("target_status = %d\n", target_status);
+            }
+//            PrintCarData(&car_data);
 #endif
-//            HAL_UART_Receive(&huart5, _rx_buf, 18, 2);
+//            HAL_UART_Transmit(&huart5, (uint8_t *)&(car_data->header), 1, 10);
+//            uint8_t A5 = 0xA5;
+//            HAL_UART_Transmit(&huart5, &A5, 1, 10);
+#if USE_REMOTE
             RemoteControl();
+#endif
             /*
             int x = 16, y = 96;
             if(couut == 100) {
@@ -1012,7 +1145,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             }
             printf("\n");
 */
-#endif
 #if JUDGE_INFO
             printf("Judge uart: \n");
 //            for (int i = 0; USART6RxBuf[i] != '\0'; ++i){

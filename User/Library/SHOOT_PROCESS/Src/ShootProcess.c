@@ -37,9 +37,11 @@ void DartFeedFSM(void){
             StepperSetSpeed(STEPPER4, 0);
             break;
         case 1:                 //upward moving
+#if OLD_FEED
             StepperStart(STEPPER4);
             StepperSetSpeed(STEPPER4, 500);
             ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_UP, 0);
+#endif
             break;
         case 2:                 //dart loading
             StepperSetSpeed(STEPPER4, 0);
@@ -128,14 +130,12 @@ void DartReset(void){
 extern int servoTriggerCont;
 void TriggerReset(void){
     ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_RESET, 0);
-    ServoSet(SERVO_4, SERVO_TRIGGER_RESET, 0);
     printf("RESET TRIGGE\n");
     servoTriggerCont = 0;
 }
 
 void TriggerShoot(void){
     ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_SHOOT, 0);
-    ServoSet(SERVO_4, SERVO_TRIGGER_SHOOT, 0);
     printf("RESET TRIGGE\n");
     servoTriggerCont = 0;
 }

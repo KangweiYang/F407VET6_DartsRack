@@ -15,6 +15,7 @@ extern int32_t tension1, tensionL;
 extern double targetTen[2];
 extern int motor0Flag, motor1Flag, motor2Flag, motor3Flag, stepper0Flag, stepper1Flag;
 extern int shootFlag;
+extern int servo5comp;
 
 void DartLoad1(uint16_t delayTime){
     targetVel[1] = 3000;
@@ -37,6 +38,7 @@ void DartLoad1(uint16_t delayTime){
 
 void ServoInit(void) {
     HAL_TIM_PWM_Init(&htim2);
+    HAL_TIM_PWM_Init(&htim5);
     HAL_TIM_PWM_Init(&htim8);
     HAL_TIM_PWM_Init(&htim12);
     HAL_TIM_Base_Start(&htim2);
@@ -44,6 +46,7 @@ void ServoInit(void) {
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
+    HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_1);
     HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
     HAL_TIM_PWM_Start(&htim12, TIM_CHANNEL_2);
 
@@ -61,7 +64,7 @@ void Delay(int32_t delayTime){
 void ServoSet(int channel, int angle, int delay) {
     switch (channel) {
         case 1:
-            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, angle);
+            __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_1, angle);
             Delay(delay);
             break;
         case 2:
@@ -76,10 +79,18 @@ void ServoSet(int channel, int angle, int delay) {
             __HAL_TIM_SET_COMPARE(&htim12, TIM_CHANNEL_2, angle);
             Delay(delay);
             break;
+        case 5:
+            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, angle);
+            Delay(delay);
+            break;
+//            servo5comp == angle;
+//            Delay(delay);
+//            break;
     }
 }
 
 void ServoGraspDart(void) {
+#if OLD_FEED
 //    ServoSet(SERVO_UP_DOWN, 65, 200);
     ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_UP, 0);                         //STOP up
 
@@ -116,6 +127,7 @@ void ServoGraspDart(void) {
             DartFeedStartUp();
         else
             StepperSetSpeed(STEPPER4, 0);
+#endif
 }
 /*
 void ServoGraspDart(void) {

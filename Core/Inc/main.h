@@ -74,10 +74,8 @@ void SystemClock_Config(void);
 #define STEPPER3_DIR_GPIO_Port GPIOC
 #define STEPPER4_DIR_Pin GPIO_PIN_3
 #define STEPPER4_DIR_GPIO_Port GPIOC
-#define HALL_BACK_SW___Pin GPIO_PIN_4
-#define HALL_BACK_SW___GPIO_Port GPIOA
-#define HALL_LEFT_SW___Pin GPIO_PIN_5
-#define HALL_LEFT_SW___GPIO_Port GPIOA
+#define SERVO5_Pin GPIO_PIN_4
+#define SERVO5_GPIO_Port GPIOA
 #define RELAY_CONTROL2_Pin GPIO_PIN_4
 #define RELAY_CONTROL2_GPIO_Port GPIOC
 #define HALL_FEED_BOTTOM_SW_Pin GPIO_PIN_5
@@ -88,8 +86,6 @@ void SystemClock_Config(void);
 #define RS485_2_RX_TX_CONTROL_GPIO_Port GPIOE
 #define DART_STOP_SW_Pin GPIO_PIN_14
 #define DART_STOP_SW_GPIO_Port GPIOB
-#define YAW_STEPPER_PUL_Pin GPIO_PIN_12
-#define YAW_STEPPER_PUL_GPIO_Port GPIOD
 #define HALL_RIGHT_SW_Pin GPIO_PIN_13
 #define HALL_RIGHT_SW_GPIO_Port GPIOD
 #define HALL_RIGHT_SW_EXTI_IRQn EXTI15_10_IRQn
@@ -116,7 +112,7 @@ void SystemClock_Config(void);
 
 #define CONT_TO_READY_TO_SHOOT  10         //100ms
 #define SHOOT_BREAK  300         //100ms
-#define START_TENSION   30
+#define START_TENSION   170
 
 //stepper
 #define STEPPER_PARAS_TEST  0
@@ -152,22 +148,34 @@ void SystemClock_Config(void);
 #define STEPPER2SMALLSMALLSMALLSMALLKD 70
 
 //servo
-#define SERVO_UP_DOWN   1
-#define SERVO_GRASP     2
-#define SERVO_TRIGGER   3
-#define SERVO_4  4
-#define SERVO_UP_DOWN_UP    20//SERVO_TRIGGER_MIDDLE//20
-#define SERVO_UP_DOWN_DOWN  120
-#define SERVO_GRASP_GRASP   104
+#define OLD_FEED                0
+#define SERVO_UP_DOWN_LEFT      1
+#define SERVO_UP_DOWN_RIGHT     2
+#define SERVO_TRIGGER           3
+#define SERVO_GRASP             4
+#define SERVO_LEFT_RIGHT        5
+#define SERVO_UP_DOWN_RIGHT_INIT    18//SERVO_TRIGGER_MIDDLE//20
+#define SERVO_UP_DOWN_LEFT_INIT     122//SERVO_TRIGGER_MIDDLE//20
+#define SERVO_UP_DOWN_RIGHT_UP      18//SERVO_TRIGGER_MIDDLE//20
+#define SERVO_UP_DOWN_RIGHT_DOWN    122
+#define SERVO_UP_DOWN_LEFT_UP       122//SERVO_TRIGGER_MIDDLE//20
+#define SERVO_UP_DOWN_LEFT_DOWN     18
+#define SERVO_GRASP_GRASP   86
+#define SERVO_GRASP_INIT    120
 #define SERVO_GRASP_RELEASE 120//SERVO_TRIGGER_MIDDLE//120
 #define SERVO_PUTDOWN_DELAY 200    //2500//ms
 #define TEST_SERVO_TRIGGER  1
-#define SERVO_TRIGGER_SHOOT 35
-#define SERVO_TRIGGER_MIDDLE    45
-#define SERVO_TRIGGER_RESET 73
+#define SERVO_TRIGGER_INIT  80
+#define SERVO_TRIGGER_SHOOT 45
+#define SERVO_TRIGGER_MIDDLE    80 //DISABLE
+#define SERVO_TRIGGER_RESET 127
 #define SERVO_TRIGGER_MIDDLE_DELAY  9     //新扳机归中延时，*100ms
+#define SOFTWARE_SERVO_PERIOD       1000   //软件舵机PWM的period
+#define SERVO_LEFT_RIGHT_INIT       20
+#define SERVO_LEFT_RIGHT_LEFT       20
+#define SERVO_LEFT_RIGHT_RIGHT      120
 
-//#define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
+#define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
 #define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
 #define MOTOR_NUM  6
 #define RX_BUFF_LENGTH  10000
@@ -181,14 +189,15 @@ void SystemClock_Config(void);
 #define CAN_INFO    0
 #define MOTOR_INFO  0
 #define ADC_DMA_INFO    0
-#define HALL_INFO   1
+#define HALL_INFO   0
 #define TEN_INFO    0
+#define TEN_LIGHT_INFO    1
 
 //stepper1,2 dir
 #define STEPPER_INFO    0
 
 #define STEPPER1_MAX_PUL  1900
-#define STEPPER2_MAX_PUL  STEPPER1_MAX_PUL*STEPPER2_VS_1
+#define STEPPER2_MAX_PUL  STEPPER1_MAX_PUL
 #define STEPPER1_2_MIN_CHANGE   (1200 / 20)
 
 #define STEPPER1_2_DIR  -1
@@ -198,7 +207,7 @@ extern double posKpStepper0, posKiStepper0, posKdStepper0;
 extern double posKpStepper1, posKiStepper1, posKdStepper1;
 extern double integralBias[2];
 #define STEPPER1_Kp   (-posKpStepper0 * ((double) tension1 - targetTen[0]) - posKiStepper0 * integralBias[0] + posKdStepper0 * ((double) tension1 - targetTen[0] - lastBias))
-#define STEPPER2_Kp   (-posKpStepper1 * (targetTen[1] - (double) tensionLL) - posKiStepper1 * integralBias[1] + posKdStepper1 * (targetTen[1] - (double) tensionLL - lastBias))
+#define STEPPER2_Kp   (STEPPER2_VS_1 * (-posKpStepper1 * (targetTen[1] - (double) tensionLL) - posKiStepper1 * integralBias[1] + posKdStepper1 * (targetTen[1] - (double) tensionLL - lastBias)))
 #define INTEGRAL_BIAS_SUB   0.8
 #define INTEGRAL_START_BIAS 10
 #define INTEGRAL_MAX    13
@@ -241,9 +250,18 @@ extern double integralBias[2];
 #define RX6_BUFF_LENGTH 10000
 
 //remote
-#define UART5_INFO  1
+#define UART5_INFO  0
+#define AIMBOT_INFO 1
 #define USE_REMOTE  0
 #define AIMBOT_MODE 1 // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
+#define AIMBOT_KP   0.07
+#define AIMBOT_KI   0.00001
+#define AIMBOT_KD   0.5
+#define AIMBOT_PID  (AIMBOT_KP * ((float )yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float ) yaw_error - targetYawPul - lastYawError))
+#define AIMBOT_CONTROL_DELAY    5000
+#define INTEGRAL_YAW_START_BIAS 100
+#define INTEGRAL_YAW_BIAS_SUB   200
+#define INTEGRAL_YAW_MAX        100000
 
 //sonic
 #define SONIC_ENABLE    0

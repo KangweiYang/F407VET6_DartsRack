@@ -54,8 +54,6 @@ double posKpStepper0 = STEPPER1BIGKP, posKiStepper0 = 0.00, posKdStepper0 = STEP
 double posKpStepper1 = STEPPER2BIGKP, posKiStepper1 = 0.00, posKdStepper1 = STEPPER2BIGKD;
 double velKpStepper = 0, velKiStepper = 10000;
 
-int servo5comp = SERVO_LEFT_RIGHT_INIT;
-
 int32_t tension1 = 0;
 int32_t tensionL = 0;
 int16_t stepper0Speed = 0;
@@ -66,13 +64,13 @@ uint8_t ex_rs4851data[11], ex_rs4852data[11], ex_tension1DataAddress = 0, ex_ten
 int16_t current[4], pos[4], vel[6];
 double targetVel[4];
 int targetPos[4];
-double targetTen[2] = {START_TENSION, START_TENSION};
+double targetTen[2] = {START_TENSION_R, START_TENSION_L};
 int targetYawPul = 0, UART_TargetYawPul = 0, UART_TargetYawSpeed = 0;
 float yaw_error;
 uint8_t target_status;
 float lastYawError, integralYawError;
 
-int furTarTen[4];
+int furTarTen[5];
 int furTarYaw[5];
 
 int shootFlag = 0;
@@ -262,8 +260,7 @@ void UserInit(void) {
     ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_INIT, 10);
     ServoSet(SERVO_GRASP, SERVO_GRASP_INIT, 10);
     ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_INIT, 10);
-    ServoSet(SERVO_GRASP, SERVO_GRASP_INIT, 10);
-    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_LEFT, 10);
+    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_INIT, 10);
 #if OLD_FEED
     ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 10);
     ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_UP, 1);                      //Start up
@@ -306,8 +303,8 @@ void ShootFirstDart(){
     targetYawPul = furTarYaw[0];
     DartReset();
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
-    DartLoad(LOAD_SPEED);
-    DartRelease();
+    DartLoad(LOAD_SPEED, 0);
+    DartRelease(0);
     tensionControlFlag = 1;
     {
         int prevTen1[WAIT_TIMES], prevTenL[WAIT_TIMES], i = 0;
@@ -322,9 +319,10 @@ void ShootFirstDart(){
             tensionL = RS485_2_GetTension();
             if(tension1 == 0){
                 HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
-                HAL_Delay(100);
+                HAL_Delay(500);
                 printf("Tension error:RELAY_REOPEN\n");
                 HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+                HAL_Delay(1000);
             }
             i++;
             if(i >= WAIT_TIMES) i = 0;
@@ -344,25 +342,21 @@ void ShootFirstDart(){
     tensionControlFlag = 0;
     stepper0Flag = 0;
     stepper1Flag = 0;
-    DartShoot();
+    DartShoot(0);
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
-    HAL_Delay(300);
-    targetYawPul = -furTarYaw[0];
+    HAL_Delay(500);
 }
 void ShootOneDart(int dartSerial) {
-    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
     stepper0Flag = 0;
     stepper1Flag = 0;
     targetTen[0] = furTarTen[dartSerial - 1];
     targetTen[1] = furTarTen[dartSerial - 1];
-    if(shootFlag == 5) targetYawPul = 0;
-    else if(dartSerial == 1) targetYawPul = furTarYaw[0];
+    if(dartSerial == 1) targetYawPul = furTarYaw[0];
     else    targetYawPul = furTarYaw[dartSerial - 1];
-    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
-    if(shootFlag != 5)  ServoGraspDart();
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
-    DartLoad(LOAD_SPEED);
-    DartRelease();
+    DartLoad(LOAD_SPEED, dartSerial);
+    DartRelease(dartSerial);
     tensionControlFlag = 1;
     {
         int prevTen1[WAIT_TIMES], prevTenL[WAIT_TIMES], i = 0;
@@ -393,10 +387,11 @@ void ShootOneDart(int dartSerial) {
     tensionControlFlag = 0;
     stepper0Flag = 0;
     stepper1Flag = 0;
-    DartShoot();
+    StepperSetSpeed(STEPPER1, 0);
+    StepperSetSpeed(STEPPER2, 0);
+    DartShoot(dartSerial);
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
-    HAL_Delay(300);
-    targetYawPul = -furTarYaw[dartSerial - 1];
+    HAL_Delay(500);
 }
 
 /**
@@ -580,12 +575,12 @@ int main(void) {
         if(contFromLastUart >= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK && contFromLastUart <= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK + 10){
             stepper0Flag = 1;
             stepper1Flag = 1;
-            targetTen[0] = START_TENSION;
-            targetTen[1] = START_TENSION;
+            targetTen[0] = START_TENSION_R;
+            targetTen[1] = START_TENSION_L;
             HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
         }
         if(shootFlag == 5){
-            ShootOneDart(1);
+            ShootOneDart(5);
             HAL_Delay(1000);
             shootFlag = 0;
         }
@@ -593,22 +588,23 @@ int main(void) {
             printf("shootFlag: %d\n", shootFlag);
             ShootOneDart(shootFlag);
             HAL_Delay(1000);
-            if(shootFlag == 4)  {
+            if(shootFlag == TOTAL_DART_NUM)  {
                 shootFlag = 0;
                 canShootFlag = 0;
                 DartFeedStartDown();
                 StepperStart(STEPPER4);
                 resetFeedCont += 128;
                 HAL_Delay(13000);
-                HAL_NVIC_SystemReset();          	/* 重启 */
+//                HAL_NVIC_SystemReset();          	/* 重启 */
             } else{
                 shootFlag++;
             }
         }
         if (canShootFlag && furTarTen[1] != 0 && shootFlag == 1) {
             printf("shootFlag: %d\n", 1);
+//            ShootFirstDart();               //这里会让测力离线
+            ShootOneDart(shootFlag);
             shootFlag++;
-            ShootFirstDart();
             HAL_Delay(1000);
         }
     }
@@ -666,18 +662,18 @@ int StrToInt(uint8_t *buf, int16_t startPointer, uint8_t endChar){
 double stepper_Kp[90] = {
         // 0-160线性保持（0-160实际为430）
         430,430,430,430,430,430,430,430,430,430,  // 5-95
-        430,430,330,230,200,180,170,              // 105-155
+        430,430,330,230,180,140,130,              // 105-155
 
         // 160-170突变区
         150,                                       // 165
 
         // 170-420线性下降（170→120）
-        150,150,140,158,154,150,146,142,138,134,  // 175-265
+        150,110,140,158,154,150,146,142,138,134,  // 175-265
         130,126,122,118,114,110,106,102,98,84,    // 275-365
         70,66,62,58,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
-        54,50,46,43,37,37,36, 35,34, 30,            // 425-465
+        54,50,46,33,32,32,32, 32,32, 30,            // 425-465
         28,27,26,25,24,23,27,27,26,25,            // 475-515
 
         // 520-580指数衰减（40→24）
@@ -907,12 +903,23 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 #if AIMBOT_MODE
 //        static int16_t aimbotDelayCont = 0;
         if(target_status){                  //如果检测到绿灯
+            if((yaw_error - targetYawPul) <= INTEGRAL_YAW_START_BIAS && (yaw_error - targetYawPul) >= -INTEGRAL_YAW_START_BIAS)
+                integralYawError +=  yaw_error - targetYawPul;
+            if(integralYawError > INTEGRAL_YAW_BIAS_SUB)   integralYawError -= INTEGRAL_YAW_BIAS_SUB;
+            else if(integralYawError < -INTEGRAL_YAW_BIAS_SUB)   integralYawError += INTEGRAL_YAW_BIAS_SUB;
+            if(integralYawError <= -INTEGRAL_YAW_MAX)    integralYawError = -INTEGRAL_YAW_MAX;
+            if(integralYawError >= INTEGRAL_YAW_MAX) integralYawError = INTEGRAL_YAW_MAX;
+            if(integralYawError >= -INTEGRAL_SET_ZERO && integralYawError <= INTEGRAL_SET_ZERO)   integralYawError = 0;
+            if((yaw_error - targetYawPul) <= AIMBOT_SET_ZERO && (yaw_error - targetYawPul) >= -AIMBOT_SET_ZERO) StepperStop(STEPPER3);
+            else    {
+                UART_TargetYawSpeed = AIMBOT_PID;
+                StepperStart(STEPPER3);
+            }
 //            StepperStart(STEPPER3);
 //            if(aimbotDelayCont < AIMBOT_CONTROL_DELAY)  aimbotDelayCont ++;
 //            else{
 //                aimbotDelayCont = 0;
 //                UART_TargetYawPul = yaw_error / 2;
-                UART_TargetYawSpeed = AIMBOT_PID;
 //            UART_TargetYawSpeed = yaw_error / 5;
 //                printf("UART_TargetYawSpeed = %d\n", UART_TargetYawSpeed);
 //            }
@@ -921,14 +928,26 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //            StepperStop(STEPPER3);
         }
         lastYawError = yaw_error - targetYawPul;
-        if(lastYawError <= INTEGRAL_YAW_START_BIAS && lastYawError >= -INTEGRAL_YAW_START_BIAS)
-            integralYawError += lastYawError;
-        if(integralYawError > INTEGRAL_YAW_BIAS_SUB)   integralYawError -= INTEGRAL_YAW_BIAS_SUB;
-        else if(integralYawError < -INTEGRAL_YAW_BIAS_SUB)   integralYawError += INTEGRAL_YAW_BIAS_SUB;
-        if(integralYawError <= -INTEGRAL_YAW_MAX)    integralYawError = -INTEGRAL_YAW_MAX;
-        if(integralYawError >= INTEGRAL_YAW_MAX) integralYawError = INTEGRAL_YAW_MAX;
-
-#else
+#endif
+        //手动调yaw
+#if MANUAL_YAW
+        if(shootFlag == 0 && targetYawPul != 0){
+            if(targetYawPul > 0)    {
+                StepperSetSpeed(STEPPER3, 100);
+                StepperStart(STEPPER3);
+                targetYawPul--;
+            }
+            if(targetYawPul < 0)    {
+                StepperSetSpeed(STEPPER3, -100);
+                StepperStart(STEPPER3);
+                targetYawPul++;
+            }
+            if (targetYawPul == 0) {
+                StepperStop(STEPPER3);
+            }
+        }
+#endif
+#if !AIMBOT_MODE
         if (targetYawPul * lastYawPul < 0)
             HAL_GPIO_TogglePin(STEPPER3_DIR_GPIO_Port, STEPPER3_DIR_Pin);
         if (targetYawPul > 0) {
@@ -955,6 +974,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //            IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
                 StepperStart(STEPPER1);
                 static double lastBias;
+
+                if(tension1 - targetTen[0]<= INTEGRAL_START_BIAS && tension1 - targetTen[0] >= -INTEGRAL_START_BIAS)
+                    integralBias[0] += tension1 - targetTen[0] - INTEGRAL_BIAS_SUB;
+                else    integralBias[0] -= INTEGRAL_BIAS_SUB;
+                if(integralBias[0] <= -INTEGRAL_MAX)    integralBias[0] = -INTEGRAL_MAX;
+                if(integralBias[0] >= INTEGRAL_MAX) integralBias[0] = INTEGRAL_MAX;
+                if(integralBias[0] >= -INTEGRAL_SET_ZERO && integralBias[0] <= INTEGRAL_SET_ZERO) integralBias[0] = 0;
+
                 if(((double) tension1 - targetTen[0]) <= STEPPER_CHANGE_TO_SMALL_K && ((double) tension1 - targetTen[0]) >= -STEPPER_CHANGE_TO_SMALL_K){
                     posKpStepper0 = stepper_Kp[(int)targetTen[0] / 10];
                     posKiStepper0 = stepper_Kp[(int)targetTen[0] / 10] / KI_DIVIDE;
@@ -983,11 +1010,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     stepper0Speed = STEPPER1_Kp;
                 }
                 lastBias = (double) tension1 - targetTen[0];
-                if(lastBias <= INTEGRAL_START_BIAS && lastBias >= -INTEGRAL_START_BIAS)
-                    integralBias[0] += lastBias - INTEGRAL_BIAS_SUB;
-                else    integralBias[0] -= INTEGRAL_BIAS_SUB;
-                if(integralBias[0] <= -INTEGRAL_MAX)    integralBias[0] = -INTEGRAL_MAX;
-                if(integralBias[0] >= INTEGRAL_MAX) integralBias[0] = INTEGRAL_MAX;
 //            printf("%lf\n", STEPPER1_Kp);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed);
             }
@@ -997,6 +1019,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             else if (stepper1Flag == 1 && tensionL <= TENSION_PROTECT_HIGH && tensionL >= TENSION_PROTECT_LOW) {
                 int32_t tensionLL = tensionL;
                 static double lastBias;
+
+                if(targetTen[1] - (double) tensionLL <= INTEGRAL_START_BIAS && targetTen[1] - (double) tensionLL >= -INTEGRAL_START_BIAS)
+                    integralBias[1] += targetTen[1] - (double) tensionLL - INTEGRAL_BIAS_SUB;
+                else    integralBias[1] -= INTEGRAL_BIAS_SUB;
+                if(integralBias[1] <= -INTEGRAL_MAX)    integralBias[1] = -INTEGRAL_MAX;
+                if(integralBias[1] >= INTEGRAL_MAX) integralBias[1] = INTEGRAL_MAX;
+                if(integralBias[1] >= -INTEGRAL_SET_ZERO && integralBias[1] <= INTEGRAL_SET_ZERO) integralBias[1] = 0;
+
                 if((targetTen[1] - (double) tensionLL) <= STEPPER_CHANGE_TO_SMALL_K && (targetTen[1] - (double) tensionLL) >= -STEPPER_CHANGE_TO_SMALL_K){
                     posKpStepper1 = stepper_Kp[(int)targetTen[1] / 10];
                     posKiStepper1 = stepper_Kp[(int)targetTen[1] / 10] / KI_DIVIDE;
@@ -1031,11 +1061,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 }
 //                lastBias = (double) tensionL - targetTen[1];
                 lastBias = targetTen[1] - (double) tensionLL;
-                if(lastBias <= INTEGRAL_START_BIAS && lastBias >= -INTEGRAL_START_BIAS)
-                    integralBias[1] += lastBias - INTEGRAL_BIAS_SUB;
-                else    integralBias[1] -= INTEGRAL_BIAS_SUB;
-                if(integralBias[1] <= -INTEGRAL_MAX)    integralBias[1] = -INTEGRAL_MAX;
-                if(integralBias[1] >= INTEGRAL_MAX) integralBias[1] = INTEGRAL_MAX;
 //            printf("%ld, %lf = -20 * (%lf - %ld)\n", tensionL, STEPPER2_Kp, targetTen[1], tensionLL);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionLL, stepper0Speed, stepper1Speed);
             }
@@ -1055,11 +1080,59 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             right3508StopCont--;
             targetVel[2] = 0;
         }
+
+#if AIMBOT_MODE
+// 在数据接收后的处理逻辑中：
+        if (_rx_buf[0] == 0xA5) {
+            // 提取 yaw_error（大端转小端）
+            uint8_t *yaw_ptr = &_rx_buf[2];  // 原数据：0x90,0xA0,0x2A,0xC4（大端）
+
+            // 手动反转字节序（大端 -> 小端）
+            union {
+                uint32_t u;
+                float f;
+            } yaw_convert;
+
+            // 将反转后的字节按大端序组合成uint32
+            yaw_convert.u = (yaw_ptr[3] << 24) |  // 原第4字节（0xC4）移到最高位
+                            (yaw_ptr[2] << 16) |  // 原第3字节（0x2A）
+                            (yaw_ptr[1] << 8)  |  // 原第2字节（0xA0）
+                            yaw_ptr[0];          // 原第1字节（0x90）在最低位
+
+            yaw_error = yaw_convert.f;     // 通过联合体转为float
+
+            // 打印调试信息
+//                printf("yaw_bytes: %02X %02X %02X %02X\n",
+//                       yaw_ptr[3], yaw_ptr[2], yaw_ptr[1], yaw_ptr[0]);
+//                printf("yaw_uint: %08lX\n", (uint32_t)yaw_convert.u);
+
+            // 提取 target_status
+            target_status = _rx_buf[6];
+
+//            printf("yaw_error = %f\n", yaw_error);
+//            printf("target_status = %d\n", target_status);
+
+            for (int i = 0; i < 18; ++i){
+                _rx_buf[i] = '\0';
+            }
+        } else {
+            target_status = 0;
+
+//            printf("yaw_error = %f\n", yaw_error);
+//            printf("target_status = %d\n", target_status);
+        }
+//            PrintCarData(&car_data);
+#endif
     }
     if (htim->Instance == htim10.Instance) {     //100ms timer
         static uint16_t pointer, couut;
         couut++;
         static int32_t lastTension1, lastTensionL;
+        if(HAL_GPIO_ReadPin(DART_STOP_SW_GPIO_Port, DART_STOP_SW_Pin) == GPIO_PIN_RESET) {
+            ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 0);
+        } else if(shootFlag == 0) {
+            ServoSet(SERVO_GRASP, SERVO_GRASP_GRASP, 0);
+        }
         if(backCont){
             if(backCont <= 1){
                 DartFeedStopDown();
@@ -1132,53 +1205,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 #endif
             printf("\n");
 #if UART5_INFO
-            for (int i = 0; i < 18; ++i){
-                printf("%x, ",_rx_buf[i]);
-            }
+//            for (int i = 0; i < 18; ++i){
+//                printf("%x, ",_rx_buf[i]);
+//            }
+
+            printf("yaw_error = %f\n", yaw_error);
+            printf("target_status = %d\n", target_status);
 #endif
 
-#if AIMBOT_MODE
-// 在数据接收后的处理逻辑中：
-            if (_rx_buf[0] == 0xA5) {
-                // 提取 yaw_error（大端转小端）
-                uint8_t *yaw_ptr = &_rx_buf[2];  // 原数据：0x90,0xA0,0x2A,0xC4（大端）
-
-                // 手动反转字节序（大端 -> 小端）
-                union {
-                    uint32_t u;
-                    float f;
-                } yaw_convert;
-
-                // 将反转后的字节按大端序组合成uint32
-                yaw_convert.u = (yaw_ptr[3] << 24) |  // 原第4字节（0xC4）移到最高位
-                                (yaw_ptr[2] << 16) |  // 原第3字节（0x2A）
-                                (yaw_ptr[1] << 8)  |  // 原第2字节（0xA0）
-                                yaw_ptr[0];          // 原第1字节（0x90）在最低位
-
-                yaw_error = yaw_convert.f;     // 通过联合体转为float
-
-                // 打印调试信息
-//                printf("yaw_bytes: %02X %02X %02X %02X\n",
-//                       yaw_ptr[3], yaw_ptr[2], yaw_ptr[1], yaw_ptr[0]);
-//                printf("yaw_uint: %08lX\n", (uint32_t)yaw_convert.u);
-
-                // 提取 target_status
-                target_status = _rx_buf[6];
-
-                printf("yaw_error = %f\n", yaw_error);
-                printf("target_status = %d\n", target_status);
-
-                for (int i = 0; i < 18; ++i){
-                    _rx_buf[i] = '\0';
-                }
-            } else {
-                target_status = 0;
-
-                printf("yaw_error = %f\n", yaw_error);
-                printf("target_status = %d\n", target_status);
-            }
-//            PrintCarData(&car_data);
-#endif
 //            HAL_UART_Transmit(&huart5, (uint8_t *)&(car_data->header), 1, 10);
 //            uint8_t A5 = 0xA5;
 //            HAL_UART_Transmit(&huart5, &A5, 1, 10);
@@ -1296,23 +1330,24 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 switch (rxHandleBuf[8]) {
                     case '1':
                         furTarYaw[0] = StrToInt(rxHandleBuf, 10, ')');
-                        printf("yaw: %d\n", furTarYaw[0]);
+                        printf("yaw[0]: %d\n", furTarYaw[0]);
                         break;
                     case '2':
                         furTarYaw[1] = StrToInt(rxHandleBuf, 10, ')');
-                        printf("yaw: %d\n", furTarYaw[1]);
+                        printf("yaw[1]: %d\n", furTarYaw[1]);
                         break;
                     case '3':
                         furTarYaw[2] = StrToInt(rxHandleBuf, 10, ')');
-                        printf("yaw: %d\n", furTarYaw[2]);
+                        printf("yaw[2]: %d\n", furTarYaw[2]);
                         break;
                     case '4':
                         furTarYaw[3] = StrToInt(rxHandleBuf, 10, ')');
-                        printf("yaw: %d\n", furTarYaw[3]);
+                        printf("yaw[3]: %d\n", furTarYaw[3]);
                         break;
                     case '5':
-                        furTarYaw[5] = StrToInt(rxHandleBuf, 10, ')');
-                        printf("yaw[5]: %d\n", furTarYaw[3]);
+                        furTarYaw[4] = StrToInt(rxHandleBuf, 10, ')');
+                        printf("yaw[4]: %d\n", furTarYaw[4]);
+                        targetYawPul = furTarYaw[4];
                         break;
                 }
             } else if (ContainsSubString(rxHandleBuf + 1, SetTen)) {
@@ -1337,6 +1372,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                         printf("ten[3]: %d\n", furTarTen[3]);
                         canShootFlag = 1;       //仅测试四发连发时使用
                         shootFlag = 1;         //仅测试四发连发时使用
+                    case '5':
+                        furTarTen[4] = StrToInt(rxHandleBuf, 10, ')');
+                        printf("ten[4]: %d\n", furTarTen[4]);
+                        break;
                 }
             } else if (ContainsSubString(rxHandleBuf, TestShoot)) {
                 static int cout1;
@@ -1351,8 +1390,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 printf("AbortShoot %d\n", cout2);
                 canShootFlag = 0;
                 shootFlag = 0;
-                targetTen[0] = furTarTen[0];
-                targetTen[1] = furTarTen[0];
+                targetTen[0] = furTarTen[4];
+                targetTen[1] = furTarTen[4];
                 HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
                 stepper1Flag = 1;
                 stepper0Flag = 1;
@@ -1387,22 +1426,23 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 if(trig == 0){
                     trig = 1;
 //                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_UP, 0);
-                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_UP, 0);
+//                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_UP, 0);
 //                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_RESET, 0);
-//                    ServoSet(SERVO_GRASP, SERVO_GRASP_INIT, 0);
-//                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_RIGHT, 0);
+//                    ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 0);
+                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_RIGHT, 0);
                     printf("RESET TRIGGE, init grasp, SERVO_LEFT_RIGHT_RIGHT, SERVO_UP_DOWN_LEFT_UP, SERVO_UP_DOWN_RIGHT_UP\n");
                     servoTriggerCont = 0;
-                } else{
+                } else if(trig == 1){
                     trig = 0;
 //                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_DOWN, 0);
-                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_DOWN, 0);
+//                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_DOWN, 0);
 //                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_SHOOT, 0);
 //                    ServoSet(SERVO_GRASP, SERVO_GRASP_GRASP, 0);
-//                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_LEFT, 0);
+                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_LEFT, 0);
                     printf("SHOT TRIGGE, grasp grasp, SERVO_LEFT_RIGHT_LEFT, SERVO_UP_DOWN_LEFT_DOWN, SERVO_UP_DOWN_RIGHT_DOWN\n");
                     servoTriggerCont = 0;
                 }
+
 #endif
             } else if (ContainsSubString(rxHandleBuf, ShootTwoDarts)) {
                 static int cout7;

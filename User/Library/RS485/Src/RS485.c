@@ -42,14 +42,31 @@ void RS485Init(void) {
 }
 
 void RS485ReceiveState(int channel) {
-    if (channel == 1) HAL_GPIO_WritePin(RS485_1_RX_TX_CONTROL_GPIO_Port, RS485_1_RX_TX_CONTROL_Pin, GPIO_PIN_RESET);
+#if RS485_NORMAL
+    if (channel == 1)
+        HAL_GPIO_WritePin(RS485_1_RX_TX_CONTROL_GPIO_Port, RS485_1_RX_TX_CONTROL_Pin, GPIO_PIN_RESET);
     else if (channel == 2)
         HAL_GPIO_WritePin(RS485_2_RX_TX_CONTROL_GPIO_Port, RS485_2_RX_TX_CONTROL_Pin, GPIO_PIN_RESET);
+#else
+    if (channel == 1)
+        HAL_GPIO_WritePin(RS485_2_RX_TX_CONTROL_GPIO_Port, RS485_2_RX_TX_CONTROL_Pin, GPIO_PIN_RESET);
+    else if (channel == 2)
+        HAL_GPIO_WritePin(RS485_1_RX_TX_CONTROL_GPIO_Port, RS485_1_RX_TX_CONTROL_Pin, GPIO_PIN_RESET);
+#endif
 }
 
 void RS485SendState(int channel) {
-    if (channel == 1) HAL_GPIO_WritePin(RS485_1_RX_TX_CONTROL_GPIO_Port, RS485_1_RX_TX_CONTROL_Pin, GPIO_PIN_SET);
-    else if (channel == 2) HAL_GPIO_WritePin(RS485_2_RX_TX_CONTROL_GPIO_Port, RS485_2_RX_TX_CONTROL_Pin, GPIO_PIN_SET);
+#if RS485_NORMAL
+    if (channel == 1)
+        HAL_GPIO_WritePin(RS485_1_RX_TX_CONTROL_GPIO_Port, RS485_1_RX_TX_CONTROL_Pin, GPIO_PIN_SET);
+    else if (channel == 2)
+        HAL_GPIO_WritePin(RS485_2_RX_TX_CONTROL_GPIO_Port, RS485_2_RX_TX_CONTROL_Pin, GPIO_PIN_SET);
+#else
+    if (channel == 1)
+        HAL_GPIO_WritePin(RS485_2_RX_TX_CONTROL_GPIO_Port, RS485_2_RX_TX_CONTROL_Pin, GPIO_PIN_SET);
+    else if (channel == 2)
+        HAL_GPIO_WritePin(RS485_1_RX_TX_CONTROL_GPIO_Port, RS485_1_RX_TX_CONTROL_Pin, GPIO_PIN_SET);
+#endif
 }
 
 void RS485_1_SetTensionZero(void) {

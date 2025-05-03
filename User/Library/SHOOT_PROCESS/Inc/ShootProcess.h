@@ -27,10 +27,10 @@ void DartFeedStopDown(void);
 
 void DartReset(void);
 
-void DartLoad(int loadSpeed);
+void DartLoad(int loadSpeed, int dartSerial);
 
-void DartRelease(void);
+void DartRelease(int dartSerial);
 
-void DartShoot(void);
+void DartShoot(int dartSerial);
 
 #endif //F407VET6_DARTSRACK_SHOOTPROCESS_H

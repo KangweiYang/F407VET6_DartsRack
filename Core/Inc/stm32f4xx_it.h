@@ -60,6 +60,7 @@ void EXTI1_IRQHandler(void);
 void DMA1_Stream0_IRQHandler(void);
 void CAN1_RX0_IRQHandler(void);
 void TIM1_UP_TIM10_IRQHandler(void);
+void TIM1_CC_IRQHandler(void);
 void USART1_IRQHandler(void);
 void EXTI15_10_IRQHandler(void);
 void UART5_IRQHandler(void);

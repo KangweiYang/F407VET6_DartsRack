@@ -22,6 +22,91 @@ extern int furTarYaw[4];
 
 int feedFSMstate = 0;
 int backCont = 0;
+static int feedSerial = 0;
+void NewFeedSystem(int dartSerial, int32_t currentRelativeTick, int loadOK) {
+    static int32_t lastActionTick = 0;
+    static int feedSerial;  // Added missing static variable
+
+    // Reset sequence if we're starting over
+    if (currentRelativeTick == 0 && loadOK == 0) {
+        feedSerial = 0;
+        lastActionTick = 0;
+        return;
+    }
+
+    switch (feedSerial) {
+        case 0: // Move to next dart position
+            printf("===dartSerial = %d\n", dartSerial);
+            ServoLR_ToNextDart(dartSerial);
+            lastActionTick = currentRelativeTick;
+            feedSerial++;
+            break;
+
+        case 1: // Down to grasp position
+            if (currentRelativeTick - lastActionTick >= DELAY_AFTER_TO_NEXT_DART) {
+                ServoUpDown_DownToGrasp(dartSerial);
+                lastActionTick = currentRelativeTick;
+                feedSerial++;
+            }
+            break;
+
+        case 2: // Grasp the dart
+            if (currentRelativeTick - lastActionTick >= DELAY_AFTER_DOWN_TO_GRASP) {
+                ServoGrasp_GraspNextDart(dartSerial);
+                lastActionTick = currentRelativeTick;
+                feedSerial++;
+            }
+            break;
+
+        case 3: // Move up with dart
+            if (currentRelativeTick - lastActionTick >= DELAY_AFTER_GRASP_DART) {
+                ServoUD_UpToMove(dartSerial);
+                lastActionTick = currentRelativeTick;
+                feedSerial++;
+            }
+            break;
+
+        case 4: // Move to middle position
+            if (currentRelativeTick - lastActionTick >= DELAY_AFTER_UP_TO_MOVE) {
+                ServoLR_ToMiddle(dartSerial);
+                lastActionTick = currentRelativeTick;
+                feedSerial++;
+            }
+            break;
+
+        case 5: // Move down to release position (if load is OK)
+            if (currentRelativeTick - lastActionTick >= DELAY_AFTER_TO_MIDDLE && loadOK == 1) {
+                ServoUD_DownToRelease(dartSerial);
+                lastActionTick = currentRelativeTick;
+                feedSerial++;
+            }
+            break;
+
+        case 6: // Release the dart
+            if (currentRelativeTick - lastActionTick >= DELAY_AFTER_DOWN_TO_RELEASE) {
+                ServoGrasp_Realease(dartSerial);
+                lastActionTick = currentRelativeTick;
+                feedSerial++;
+            }
+            break;
+
+        case 7: // Move up to avoid crash
+            if (currentRelativeTick - lastActionTick >= DELAY_AFTER_RELEASE_DART) {
+                ServoUD_UpToAvoidCrash(dartSerial);
+                lastActionTick = currentRelativeTick;
+                feedSerial++;
+            }
+            break;
+
+        case 8: // Move to not-edge position
+            if (currentRelativeTick - lastActionTick >= DELAY_AFTER_UP_TO_AVOID_CRASH) {
+                ServoLR_ToNotEdge(dartSerial);
+                lastActionTick = currentRelativeTick;
+                feedSerial++;
+            }
+            break;
+    }
+}
 
 int FeedFSMState(void){
     return feedFSMstate;
@@ -136,11 +221,13 @@ void TriggerReset(void){
 
 void TriggerShoot(void){
     ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_SHOOT, 0);
-    printf("RESET TRIGGE\n");
+    printf("SHOOT TRIGGE\n");
     servoTriggerCont = 0;
 }
 
-void DartLoad(int loadSpeed) {
+static int32_t loadStartTick;
+
+void DartLoad(int loadSpeed, int dartSerial) {
     motor0Flag = 0;
     motor1Flag = 1;
     motor2Flag = 1;
@@ -149,12 +236,18 @@ void DartLoad(int loadSpeed) {
     targetVel[2] = loadSpeed;
     targetVel[0] = 0;
 //    HAL_Delay(2000); //3700
+    loadStartTick = HAL_GetTick();
+    NewFeedSystem(dartSerial, 0, 0);
     while (HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin) != HALL_DETECTED) {
+        int32_t currentRelativeTick;
+        currentRelativeTick = HAL_GetTick() - loadStartTick;
+        NewFeedSystem(dartSerial, currentRelativeTick, 0);
         targetVel[0] = 0;
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
     }
     HAL_Delay(LOAD_DELAY);
+    TriggerReset();
     TriggerReset();
 #if SHOOT_INFO
     printf("DART LOAD OK!\n");
@@ -168,7 +261,7 @@ void DartLoad(int loadSpeed) {
     targetVel[2] = 0;
 }
 
-void DartRelease(void) {
+void DartRelease(int dartSerial) {
     motor0Flag = 1;
     triggerResetFlag = 1;
 #if OLD_TRIGGER
@@ -224,6 +317,10 @@ void DartRelease(void) {
         }
 
 #endif
+        int32_t currentRelativeTick;
+        currentRelativeTick = HAL_GetTick() - loadStartTick;
+        NewFeedSystem(dartSerial, currentRelativeTick, 1);
+
         targetVel[0] = 0;
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
@@ -252,7 +349,7 @@ void DartRelease(void) {
     targetVel[2] = 0;
 }
 
-void DartShoot(void) {
+void DartShoot(int dartSerial) {
 #if OLD_TRIGGER
     motor0Flag = 1;
     motor1Flag = 0;
@@ -267,6 +364,13 @@ void DartShoot(void) {
 #endif
 
 #if !OLD_TRIGGER
+    while (feedSerial != 9)   {
+        printf("feedSerial = %d\n", feedSerial);
+        int32_t currentRelativeTick;
+        currentRelativeTick = HAL_GetTick() - loadStartTick;
+        NewFeedSystem(dartSerial, currentRelativeTick, 1);
+    }
+    TriggerShoot();
     TriggerShoot();
 #endif
 

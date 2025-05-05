@@ -144,12 +144,18 @@ int32_t RS485_1_GetTension(void) {
     }
      */
     HAL_Delay(10);
-    static int32_t tension;
-    if (((rs4851data[tension1DataAddress] << 24) | (rs4851data[tension1DataAddress + 1] << 16) |
-         (rs4851data[tension1DataAddress + 2] << 8) | (rs4851data[tension1DataAddress + 3] << 0)) <= 1200 &&
-        ((rs4851data[tension1DataAddress] << 24) | (rs4851data[tension1DataAddress + 1] << 16) |
-         (rs4851data[tension1DataAddress + 2] << 8) | (rs4851data[tension1DataAddress + 3] << 0)) >= -1200) {
+    static int32_t tension, mutateTension;
+    int32_t curTension = (rs4851data[tension1DataAddress] << 24) | (rs4851data[tension1DataAddress + 1] << 16) |
+                         (rs4851data[tension1DataAddress + 2] << 8) | (rs4851data[tension1DataAddress + 3] << 0);
+    if (curTension <= 1200 && curTension >= -1200 &&
+    ((curTension <= tension + RS485_MUTATION_THRESHOLD && curTension >= tension - RS485_MUTATION_THRESHOLD) || tension == 0 ||
+            (mutateTension <= curTension + RS485_MUTATION_THRESHOLD && mutateTension >= curTension - RS485_MUTATION_THRESHOLD))) {
+//    if (curTension <= 1200 && curTension >= -1200) {
         tension = (rs4851data[tension1DataAddress] << 24) | (rs4851data[tension1DataAddress + 1] << 16) |
+                  (rs4851data[tension1DataAddress + 2] << 8) | (rs4851data[tension1DataAddress + 3] << 0);
+    }
+    else if(!((curTension <= tension + RS485_MUTATION_THRESHOLD && curTension >= tension - RS485_MUTATION_THRESHOLD) || tension == 0)){
+        mutateTension = (rs4851data[tension1DataAddress] << 24) | (rs4851data[tension1DataAddress + 1] << 16) |
                   (rs4851data[tension1DataAddress + 2] << 8) | (rs4851data[tension1DataAddress + 3] << 0);
     }
 #if NO_STEPPER_TEST
@@ -206,13 +212,19 @@ int32_t RS485_2_GetTension(void) {
     }
     */
     HAL_Delay(10);
-    static int32_t tension;
-    if (((rs4852data[tension2DataAddress] << 24) | (rs4852data[tension2DataAddress + 1] << 16) |
-         (rs4852data[tension2DataAddress + 2] << 8) | (rs4852data[tension2DataAddress + 3] << 0)) <= 1200 &&
-        ((rs4852data[tension2DataAddress] << 24) | (rs4852data[tension2DataAddress + 1] << 16) |
-         (rs4852data[tension2DataAddress + 2] << 8) | (rs4852data[tension2DataAddress + 3] << 0)) >= -1200) {
+    static int32_t tension, mutateTension;
+    int32_t curTension = (rs4852data[tension2DataAddress] << 24) | (rs4852data[tension2DataAddress + 1] << 16) |
+                         (rs4852data[tension2DataAddress + 2] << 8) | (rs4852data[tension2DataAddress + 3] << 0);
+    if (curTension <= 1200 && curTension >= -1200 &&
+        ((curTension <= tension + RS485_MUTATION_THRESHOLD && curTension >= tension - RS485_MUTATION_THRESHOLD) || tension == 0 ||
+         (mutateTension <= curTension + RS485_MUTATION_THRESHOLD && mutateTension >= curTension - RS485_MUTATION_THRESHOLD))) {
+//    if (curTension <= 1200 && curTension >= -1200) {
         tension = (rs4852data[tension2DataAddress] << 24) | (rs4852data[tension2DataAddress + 1] << 16) |
                   (rs4852data[tension2DataAddress + 2] << 8) | (rs4852data[tension2DataAddress + 3] << 0);
+    }
+    else if(!((curTension <= tension + RS485_MUTATION_THRESHOLD && curTension >= tension - RS485_MUTATION_THRESHOLD) || tension == 0)){
+        mutateTension = (rs4852data[tension2DataAddress] << 24) | (rs4852data[tension2DataAddress + 1] << 16) |
+                        (rs4852data[tension2DataAddress + 2] << 8) | (rs4852data[tension2DataAddress + 3] << 0);
     }
 #if NO_STEPPER_TEST
     tension = targetTen[1];

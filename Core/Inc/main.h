@@ -110,7 +110,7 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN Private defines */
 
-#define TOTAL_DART_NUM  3
+#define TOTAL_DART_NUM  4
 #define CONT_TO_READY_TO_SHOOT  10         //100ms
 #define SHOOT_BREAK  300         //100ms
 #define START_TENSION_R   190
@@ -124,7 +124,7 @@ void SystemClock_Config(void);
 #define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
 #define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
 #define STEPPER2_VS_1   1
-#define STILL_RATE  1
+#define STILL_RATE  1.5
 #define STEPPER_CHANGE_TO_SMALL_K   14
 #define STEPPER1BIGKP 430
 #define STEPPER1BIGKD 150
@@ -184,15 +184,15 @@ void SystemClock_Config(void);
 #define SERVO_LEFT_RIGHT_MIDDLE     ((SERVO_LEFT_RIGHT_LEFT + SERVO_LEFT_RIGHT_RIGHT)/2) //40
 
 //FEED
-#define TEST_SHOOT_TO_TEST_FEED          3
-#define DELAY_AFTER_TO_NEXT_DART         400  // After ServoUpDown_DownToGrasp    //ms
+#define TEST_SHOOT_TO_TEST_FEED          4
+#define DELAY_AFTER_TO_NEXT_DART         500  // After ServoUpDown_DownToGrasp    //ms
 #define DELAY_AFTER_DOWN_TO_GRASP        400  // After ServoUpDown_DownToGrasp    //ms
 #define DELAY_AFTER_GRASP_DART           200  // After ServoGrasp_GraspNextDart
 #define DELAY_AFTER_UP_TO_MOVE           200  // After ServoUD_UpToMove
 #define DELAY_AFTER_TO_MIDDLE            200  // After ServoLR_ToMiddle
-#define DELAY_AFTER_DOWN_TO_RELEASE      800  // After ServoUD_DownToRelease
+#define DELAY_AFTER_DOWN_TO_RELEASE      500  // After ServoUD_DownToRelease
 #define DELAY_AFTER_RELEASE_DART         200  // After ServoGrasp_Realease
-#define DELAY_AFTER_UP_TO_AVOID_CRASH    500  // After ServoUD_UpToAvoidCrash
+#define DELAY_AFTER_UP_TO_AVOID_CRASH    300  // After ServoUD_UpToAvoidCrash
 
 #define MOTOR_NUM  6
 #define RX_BUFF_LENGTH  10000
@@ -203,15 +203,47 @@ void SystemClock_Config(void);
 #define HALL_DETECTED   GPIO_PIN_RESET
 
 //print define
+#define STEPPER_VOFA    0
+#if !STEPPER_VOFA
 #define CAN_INFO    0
 #define MOTOR_INFO  0
 #define ADC_DMA_INFO    0
 #define HALL_INFO   0
 #define TEN_INFO    0
 #define TEN_LIGHT_INFO    1
+#define UART5_INFO  1
+#define AIMBOT_INFO 1
+#define STEPPER_INFO    0
+#define RS485_INFO  0
+#define RS485_LIGHT_INFO    0
+#define SHOOT_INFO  1
+#define JUDGE_INFO  0
+#define JUDGE020A_HANDLED_INFO 0
+#define JUDGE0105_HANDLED_INFO 0
+#define JUDGE0001_HANDLED_INFO 0
+#define JUDGE020A_RAW_INFO 0
+#define JUDGE0105_RAW_INFO 0
+#define JUDGE0001_RAW_INFO 0
+#else
+#define CAN_INFO    0
+#define MOTOR_INFO  0
+#define ADC_DMA_INFO    0
+#define HALL_INFO   0
+#define TEN_INFO    0
+#define TEN_LIGHT_INFO    0
+#define UART5_INFO  0
+#define AIMBOT_INFO 0
+#define STEPPER_INFO    0
+#define RS485_INFO  0
+#define RS485_LIGHT_INFO    0
+#define SHOOT_INFO  0
+#define JUDGE_INFO  0
+#define JUDGE020A_INFO 0
+#define JUDGE0105_INFO 0
+#define JUDGE0001_INFO 0
+#endif
 
 //stepper1,2 dir
-#define STEPPER_INFO    0
 
 #define STEPPER1_MAX_PUL  1900
 #define STEPPER2_MAX_PUL  STEPPER1_MAX_PUL
@@ -223,14 +255,24 @@ extern double lastBias;
 extern double posKpStepper0, posKiStepper0, posKdStepper0;
 extern double posKpStepper1, posKiStepper1, posKdStepper1;
 extern double integralBias[2];
+#define STEPPER_NOR_SQ_TEN_THRESOLD 300
 #define STEPPER1_Kp   (-posKpStepper0 * ((double) tension1 - targetTen[0]) - posKiStepper0 * integralBias[0] + posKdStepper0 * ((double) tension1 - targetTen[0] - lastBias))
 #define STEPPER2_Kp   (STEPPER2_VS_1 * (-posKpStepper1 * (targetTen[1] - (double) tensionLL) - posKiStepper1 * integralBias[1] + posKdStepper1 * (targetTen[1] - (double) tensionLL - lastBias)))
+#define STEPPER1_Kp_SQ   (-posKpStepper0 * ((double) tension1 - targetTen[0]) * fabs((double) tension1 - targetTen[0]) - posKiStepper0 * integralBias[0] + posKdStepper0 * ((double) tension1 - targetTen[0] - lastBias))
+#define STEPPER2_Kp_SQ   (STEPPER2_VS_1 * (-posKpStepper1 * (targetTen[1] - (double) tensionLL) * fabs(targetTen[1] - (double) tensionLL) - posKiStepper1 * integralBias[1] + posKdStepper1 * (targetTen[1] - (double) tensionLL - lastBias)))
+#define STEPPER1_P   (double)(-posKpStepper0 * ((double) tension1 - targetTen[0]))
+#define STEPPER2_P   (double)(STEPPER2_VS_1 * (-posKpStepper1 * (targetTen[1] - (double) tensionLL)))
+#define STEPPER1_I   (double)(-posKpStepper0 * (posKiStepper0 * integralBias[0]))
+#define STEPPER2_I   (double)(STEPPER2_VS_1 * (posKiStepper1 * integralBias[1]))
+#define STEPPER1_D   (double)(posKdStepper0 * ((double) tension1 - targetTen[0] - lastBias))
+#define STEPPER2_D   (double)(STEPPER2_VS_1 * posKdStepper1 * (targetTen[1] - (double) tensionLL - lastBias))
 #define INTEGRAL_BIAS_SUB   0.8
-#define INTEGRAL_START_BIAS 10
-#define INTEGRAL_MAX    500
+#define INTEGRAL_START_BIAS 5
+#define INTEGRAL_MAX    0//50000//500
 #define INTEGRAL_SET_ZERO   0
-#define KI_DIVIDE   170
+#define KI_DIVIDE   2000
 //rs485
+#define RS485_MUTATION_THRESHOLD    50
 #define RS485_NORMAL    1
 #if RS485_NORMAL
 #define HRS485_1_USART  &huart2
@@ -240,20 +282,17 @@ extern double integralBias[2];
 #define HRS485_2_USART  &huart3
 #endif
 
-#define RS485_INFO  0
-#define RS485_LIGHT_INFO    1
 
 #define TENSION_PROTECT_HIGH    900
 #define TENSION_PROTECT_LOW     10  //当拉力值不在这两个范围内时，失能两步进电机
 
 //shoot progress
-#define SHOOT_INFO  1
 #define RESET_SPEED 700
-#define LOAD_SPEED  3400
-#define LOAD_DELAY  100
-#define RELEASE_SPEED   -3000
+#define LOAD_SPEED  4500//3400
+#define LOAD_DELAY  50//100
+#define RELEASE_SPEED   -4600//-3000
 #define ERROR_LOAD_SPEED   2000
-#define RELEASE_DELAY_TENION_CONTROL    700    //释放后相隔多少ms后开始拉力闭环控制
+#define RELEASE_DELAY_TENION_CONTROL    800    //释放后相隔多少ms后开始拉力闭环控制
 #define SHOOT_SPEED -3000
 #define WAIT_TIMES  2           //当连续出现几次目标拉力值时发射
 #define LOAD_BACK_TIME_100MS    1       //2是100ms，1是不后退
@@ -267,27 +306,34 @@ extern double integralBias[2];
 #define OLD_TRIGGER 0               //机械上是老扳机？
 
 //judge system uart
-#define JUDGE_INFO  0
-#define JUDGE020A_INFO 0
-#define JUDGE0105_INFO 0
-#define JUDGE0001_INFO 0
 #define RX6_BUFF_LENGTH 10000
+#define USE_game_progress_AND_stage_remain_time     1   //使用比赛剩余时间来触发飞镖
+#define START_LOAD_TIME1    (7*60-30)       //390开始拉
+#define START_SHOOT_TIME1    (7*60-30-7)    //383开始射
+#define STOP_SHOOT_TIME1    (7*60-30-27)    //363停止射
+#define START_LOAD_TIME2    (7*60-4*60)     //180开始拉
+#define START_SHOOT_TIME2    (7*60-4*60-7)  //173开始射
+#define STOP_SHOOT_TIME2    (7*60-4*60-27)  //153停止射
+#define USE_dart_remaining_time                     0   //使用己方飞镖发射剩余时间
 
 //remote
 #define MANUAL_YAW  1
-#define UART5_INFO  1
-#define AIMBOT_INFO 1
 #define USE_REMOTE  0
-#define AIMBOT_MODE 1 // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
-#define AIMBOT_KP   0.09
-#define AIMBOT_KI   0.0000000000
-#define AIMBOT_KD   0.03
-#define AIMBOT_SET_ZERO 6
-#define AIMBOT_PID  (AIMBOT_KP * ((float )yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float ) yaw_error - targetYawPul - lastYawError))
+#define AIMBOT_MODE 1  // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
+#define AIMBOT_DEBUG    0
+#define AIMBOT_KP   0.00018//0.09
+#define AIMBOT_KI   0.00006
+#define AIMBOT_KD   0.005//0.0
+#define AIMBOT_SET_ZERO 1
+#define AIMBOT_MAX_SPEED    50
+//#define AIMBOT_PID  (AIMBOT_KP * ((float )yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float ) yaw_error - targetYawPul - lastYawError))
+#define AIMBOT_PID  (AIMBOT_KP * ((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float)yaw_error - targetYawPul - lastYawError))
+//#define AIMBOT_PID  (AIMBOT_KP * ((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float)yaw_error - targetYawPul - lastYawError))
 #define AIMBOT_CONTROL_DELAY    5000
-#define INTEGRAL_YAW_START_BIAS 200
-#define INTEGRAL_YAW_BIAS_SUB   200
+#define INTEGRAL_YAW_START_BIAS 130
+#define INTEGRAL_YAW_BIAS_SUB   0
 #define INTEGRAL_YAW_MAX        1000000
+#define INTEGRAL_YAW_SET_ZERO       8
 #define INTEGRAL_SET_ZERO       0
 
 //sonic

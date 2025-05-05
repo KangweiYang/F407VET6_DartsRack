@@ -74,6 +74,7 @@ int furTarTen[5];
 int furTarYaw[5];
 
 int shootFlag = 0;
+int shooting = 0;
 
 CAN_RxHeaderTypeDef M3508_H_Rx_1;
 CAN_RxHeaderTypeDef M3508_H_Rx_2;
@@ -111,14 +112,15 @@ enum {
 enum {
     OUT_OF_GAME = 0, PREPARE, SELF_TEST_15S, COUNTDOWN_5S, IN_GAME, GAME_SETTLE
 }game_progress;
-uint16_t stage_remain_time = 0;
+int16_t stage_remain_time = -1;
 
 enum SILO_GATE
 {
     OPEN = 0, CLOSE, MOVING
 }dart_launch_opening_status;
-uint16_t latest_launch_cmd_time = 0;
-uint16_t dart_remaining_time = 0;
+int16_t latest_launch_cmd_time = -1;
+int16_t dart_remaining_time = -1;
+int16_t dart_target = -1;
 
 /**
  * @brief    在缓冲区中查找指定字节并复制数据
@@ -360,9 +362,24 @@ void ShootOneDart(int dartSerial) {
     tensionControlFlag = 1;
     {
         int prevTen1[WAIT_TIMES], prevTenL[WAIT_TIMES], i = 0;
+#if USE_game_progress_AND_stage_remain_time
+        while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
+               || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
+               || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)
+               || stage_remain_time >= START_SHOOT_TIME1
+               || ((stage_remain_time <= STOP_SHOOT_TIME1) && (stage_remain_time >= START_SHOOT_TIME2))
+               || stage_remain_time <= STOP_SHOOT_TIME2) {
+#elif USE_dart_remaining_time
+            while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
+               || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
+               || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)
+               || dart_remaining_time <= 0
+               || dart_launch_opening_status >= 1) {
+#else
         while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
             || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
             || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)) {
+#endif
             stepper0Flag = 1;
             stepper1Flag = 1;
             prevTen1[i] = tension1;
@@ -524,7 +541,9 @@ void CubeMXInit(void){
 int main(void) {
     CubeMXInit();
     RS485Init();
+#if !STEPPER_VOFA
     printf("hello\n");
+#endif
     UserInit();
 
 #if !STEPPER_PARAS_TEST
@@ -557,6 +576,26 @@ int main(void) {
 //    motor2Flag = 0;
 //    motor3Flag = 0;
     while(1) {
+#if USE_game_progress_AND_stage_remain_time
+      if(game_progress == 4 && stage_remain_time <= START_LOAD_TIME1 && stage_remain_time >= STOP_SHOOT_TIME1 && shootFlag <= 2){
+          canShootFlag = 1;
+          if(shootFlag == 0)    shootFlag = 1;
+      }
+      else if(game_progress == 4 && stage_remain_time <= START_LOAD_TIME2 && stage_remain_time >= STOP_SHOOT_TIME2){
+          canShootFlag = 1;
+      }
+      else{
+          canShootFlag = 0;
+      }
+#elif USE_dart_remaining_time
+      if(USE_dart_remaining_time > 0){
+          canShootFlag = 1;
+          if(shootFlag == 0) shootFlag = 1;
+      }
+      else if(USE_dart_remaining_time == 0 && shootFlag > 0){
+          canShootFlag = 0;
+      }
+#endif
         if(tension1SetZeroFlag){
             RS485_1_SetTensionZero();
             tension1SetZeroFlag = 0;
@@ -595,7 +634,9 @@ int main(void) {
                 StepperStart(STEPPER4);
                 resetFeedCont += 128;
                 HAL_Delay(13000);
+#if !USE_game_progress_AND_stage_remain_time
 //                HAL_NVIC_SystemReset();          	/* 重启 */
+#endif
             } else{
                 shootFlag++;
             }
@@ -670,11 +711,11 @@ double stepper_Kp[90] = {
         // 170-420线性下降（170→120）
         150,110,140,158,154,150,146,142,138,134,  // 175-265
         130,126,122,118,114,110,106,102,98,84,    // 275-365
-        70,66,62,58,                              // 375-405
+        70,66,70,65,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
-        54,50,46,33,32,32,32, 32,32, 30,            // 425-465
-        28,27,26,25,24,23,27,27,26,25,            // 475-515
+        60,56,46,45,44,39,37, 36,35, 34,            // 425-465
+        33,27,26,25,24,23,27,27,26,25,            // 475-515
 
         // 520-580指数衰减（40→24）
         29,28,27,29,28,27,26,25,24,23,            // 525-575
@@ -902,17 +943,23 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //        lastYawSpeed = UART_TargetYawSpeed;
 #if AIMBOT_MODE
 //        static int16_t aimbotDelayCont = 0;
-        if(target_status){                  //如果检测到绿灯
+#if AIMBOT_DEBUG
+        if(target_status && shooting == 0){                  //如果检测到绿灯且不在发射中
+#else
+        if(target_status && shooting == 0 && shootFlag != 0){                  //如果检测到绿灯且不在发射中
+#endif
             if((yaw_error - targetYawPul) <= INTEGRAL_YAW_START_BIAS && (yaw_error - targetYawPul) >= -INTEGRAL_YAW_START_BIAS)
                 integralYawError +=  yaw_error - targetYawPul;
             if(integralYawError > INTEGRAL_YAW_BIAS_SUB)   integralYawError -= INTEGRAL_YAW_BIAS_SUB;
             else if(integralYawError < -INTEGRAL_YAW_BIAS_SUB)   integralYawError += INTEGRAL_YAW_BIAS_SUB;
             if(integralYawError <= -INTEGRAL_YAW_MAX)    integralYawError = -INTEGRAL_YAW_MAX;
             if(integralYawError >= INTEGRAL_YAW_MAX) integralYawError = INTEGRAL_YAW_MAX;
-            if(integralYawError >= -INTEGRAL_SET_ZERO && integralYawError <= INTEGRAL_SET_ZERO)   integralYawError = 0;
+            if((yaw_error - targetYawPul) >= -INTEGRAL_YAW_SET_ZERO && (yaw_error - targetYawPul) <= INTEGRAL_YAW_SET_ZERO)   integralYawError = 0;
             if((yaw_error - targetYawPul) <= AIMBOT_SET_ZERO && (yaw_error - targetYawPul) >= -AIMBOT_SET_ZERO) StepperStop(STEPPER3);
             else    {
-                UART_TargetYawSpeed = AIMBOT_PID;
+                if(AIMBOT_PID >= AIMBOT_MAX_SPEED)  UART_TargetYawSpeed = AIMBOT_MAX_SPEED;
+                else if(AIMBOT_PID <= -AIMBOT_MAX_SPEED) UART_TargetYawSpeed = -AIMBOT_MAX_SPEED;
+                else    UART_TargetYawSpeed = AIMBOT_PID;
                 StepperStart(STEPPER3);
             }
 //            StepperStart(STEPPER3);
@@ -947,21 +994,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             }
         }
 #endif
-#if !AIMBOT_MODE
-        if (targetYawPul * lastYawPul < 0)
-            HAL_GPIO_TogglePin(STEPPER3_DIR_GPIO_Port, STEPPER3_DIR_Pin);
-        if (targetYawPul > 0) {
-            HAL_GPIO_TogglePin(YAW_STEPPER_PUL_GPIO_Port, YAW_STEPPER_PUL_Pin);
-//            printf("+\n");
-            lastYawPul = targetYawPul;
-            targetYawPul--;
-        } else if (targetYawPul < 0) {
-            HAL_GPIO_TogglePin(YAW_STEPPER_PUL_GPIO_Port, YAW_STEPPER_PUL_Pin);
-//            printf("-\n");
-            lastYawPul = targetYawPul;
-            targetYawPul++;
-        }
-#endif
             if (cont == 10) {                           //10ms
             static double integralBias[2];
                 //AIMBOT UART
@@ -986,7 +1018,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     posKpStepper0 = stepper_Kp[(int)targetTen[0] / 10];
                     posKiStepper0 = stepper_Kp[(int)targetTen[0] / 10] / KI_DIVIDE;
                     posKdStepper0 = stepper_Kd[(int)targetTen[0] / 10];
-                    if(targetTen[0] >= 580){
+                    if(targetTen[0] >= STEPPER_NOR_SQ_TEN_THRESOLD){
                         if((tension1 - targetTen[0]) == 1 || (tension1 - targetTen[0]) == -1){
                             posKpStepper0 = STILL_RATE * posKpStepper0;
                             posKdStepper0 = STILL_RATE * posKdStepper0;
@@ -997,21 +1029,35 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     posKpStepper0 = STEPPER1BIGKP;
                     posKdStepper0 = STEPPER1BIGKD;
                 }
-                if(STEPPER1_Kp < -STEPPER1_MAX_PUL) {
-                    StepperSetSpeed(STEPPER1, -STEPPER1_MAX_PUL);
-                    stepper0Speed = -STEPPER1_MAX_PUL;
-                }
-                else if(STEPPER1_Kp > STEPPER1_MAX_PUL) {
-                    StepperSetSpeed(STEPPER1, STEPPER1_MAX_PUL);
-                    stepper0Speed = STEPPER1_MAX_PUL;
-                }
-                else {
-                    StepperSetSpeed(STEPPER1, STEPPER1_Kp);
-                    stepper0Speed = STEPPER1_Kp;
+                if(targetTen[0] < STEPPER_NOR_SQ_TEN_THRESOLD) {
+                    if (STEPPER1_Kp < -STEPPER1_MAX_PUL) {
+                        StepperSetSpeed(STEPPER1, -STEPPER1_MAX_PUL);
+                        stepper0Speed = -STEPPER1_MAX_PUL;
+                    } else if (STEPPER1_Kp > STEPPER1_MAX_PUL) {
+                        StepperSetSpeed(STEPPER1, STEPPER1_MAX_PUL);
+                        stepper0Speed = STEPPER1_MAX_PUL;
+                    } else {
+                        StepperSetSpeed(STEPPER1, STEPPER1_Kp);
+                        stepper0Speed = STEPPER1_Kp;
+                    }
+                } else {
+                    if (STEPPER1_Kp_SQ < -STEPPER1_MAX_PUL) {
+                        StepperSetSpeed(STEPPER1, -STEPPER1_MAX_PUL);
+                        stepper0Speed = -STEPPER1_MAX_PUL;
+                    } else if (STEPPER1_Kp_SQ > STEPPER1_MAX_PUL) {
+                        StepperSetSpeed(STEPPER1, STEPPER1_MAX_PUL);
+                        stepper0Speed = STEPPER1_MAX_PUL;
+                    } else {
+                        StepperSetSpeed(STEPPER1, STEPPER1_Kp_SQ);
+                        stepper0Speed = STEPPER1_Kp_SQ;
+                    }
                 }
                 lastBias = (double) tension1 - targetTen[0];
 //            printf("%lf\n", STEPPER1_Kp);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed);
+#if STEPPER_VOFA
+                printf("S:%lf,%ld,%lf,%lf,%lf,%lf,", targetTen[0], tension1, STEPPER1_Kp, STEPPER1_P, STEPPER1_I, STEPPER1_D);
+#endif
             }
 //            else if (tension1 > 900)    StepperSetSpeed(STEPPER1, 0);
 
@@ -1031,7 +1077,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     posKpStepper1 = stepper_Kp[(int)targetTen[1] / 10];
                     posKiStepper1 = stepper_Kp[(int)targetTen[1] / 10] / KI_DIVIDE;
                     posKdStepper1 = stepper_Kd[(int)targetTen[1] / 10];
-                    if(targetTen[1] >= 580){
+                    if(targetTen[1] >= STEPPER_NOR_SQ_TEN_THRESOLD){
                         if((targetTen[1] - tensionLL) == 1 || (targetTen[1] - tensionLL) == -1){
                             posKpStepper1 = STILL_RATE * posKpStepper1;
                             posKdStepper1 = STILL_RATE * posKdStepper1;
@@ -1047,22 +1093,36 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 }
 //            IncrementalPI(5, velKpStepper, velKiStepper, tensionL, targetTen[1]);
                 StepperStart(STEPPER2);
-                if(STEPPER2_Kp < -STEPPER2_MAX_PUL) {
-                    StepperSetSpeed(STEPPER2, -STEPPER2_MAX_PUL);
-                    stepper1Speed = -STEPPER2_MAX_PUL;
-                }
-                else if(STEPPER2_Kp > STEPPER2_MAX_PUL) {
-                    StepperSetSpeed(STEPPER2, STEPPER2_MAX_PUL);
-                    stepper1Speed = STEPPER2_MAX_PUL;
-                }
-                else    {
-                    StepperSetSpeed(STEPPER2, STEPPER2_Kp);
-                    stepper1Speed = STEPPER2_Kp;
+                if(targetTen[1] < STEPPER_NOR_SQ_TEN_THRESOLD) {
+                    if (STEPPER2_Kp < -STEPPER2_MAX_PUL) {
+                        StepperSetSpeed(STEPPER2, -STEPPER2_MAX_PUL);
+                        stepper1Speed = -STEPPER2_MAX_PUL;
+                    } else if (STEPPER2_Kp > STEPPER2_MAX_PUL) {
+                        StepperSetSpeed(STEPPER2, STEPPER2_MAX_PUL);
+                        stepper1Speed = STEPPER2_MAX_PUL;
+                    } else {
+                        StepperSetSpeed(STEPPER2, STEPPER2_Kp);
+                        stepper1Speed = STEPPER2_Kp;
+                    }
+                } else {
+                    if (STEPPER2_Kp_SQ < -STEPPER2_MAX_PUL) {
+                        StepperSetSpeed(STEPPER2, -STEPPER2_MAX_PUL);
+                        stepper1Speed = -STEPPER2_MAX_PUL;
+                    } else if (STEPPER2_Kp_SQ > STEPPER2_MAX_PUL) {
+                        StepperSetSpeed(STEPPER2, STEPPER2_MAX_PUL);
+                        stepper1Speed = STEPPER2_MAX_PUL;
+                    } else {
+                        StepperSetSpeed(STEPPER2, STEPPER2_Kp_SQ);
+                        stepper1Speed = STEPPER2_Kp_SQ;
+                    }
                 }
 //                lastBias = (double) tensionL - targetTen[1];
                 lastBias = targetTen[1] - (double) tensionLL;
 //            printf("%ld, %lf = -20 * (%lf - %ld)\n", tensionL, STEPPER2_Kp, targetTen[1], tensionLL);
 //                printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d\n", targetYawPul, tension1, tensionLL, stepper0Speed, stepper1Speed);
+#if STEPPER_VOFA
+                printf("%lf,%ld,%lf,%lf,%lf,%lf\n", targetTen[1], tensionL, STEPPER2_Kp, STEPPER2_P, STEPPER2_I, STEPPER2_D);
+#endif
             }
 //            else if (tensionL > 900)    StepperSetSpeed(STEPPER2, 0);
             cont = 0;
@@ -1116,7 +1176,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 _rx_buf[i] = '\0';
             }
         } else {
-            target_status = 0;
+//            target_status = 0;
 
 //            printf("yaw_error = %f\n", yaw_error);
 //            printf("target_status = %d\n", target_status);
@@ -1203,13 +1263,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 printf("%x,", ex_rs4852data[i]);
             printf("\n");
 #endif
-            printf("\n");
 #if UART5_INFO
 //            for (int i = 0; i < 18; ++i){
 //                printf("%x, ",_rx_buf[i]);
 //            }
 
-            printf("yaw_error = %f\n", yaw_error);
+            printf("yaw_error = %f, tarYawPul = %d\n", yaw_error, targetYawPul);
             printf("target_status = %d\n", target_status);
 #endif
 
@@ -1272,11 +1331,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             game_type = rx6HandleBuf[1] & 0xF;
             game_progress = rx6HandleBuf[1] >> 4;
             stage_remain_time = rx6HandleBuf[2] | (rx6HandleBuf[3] << 8);
-#if JUDGE0001_INFO
+#if JUDGE0001_RAW_INFO
             printf("0001:\n");
             for (int i = 0; i < rx6HandleBuf[0] + 1; ++i){
                 printf("%x ", rx6HandleBuf[i]);
             }
+#endif
+#if JUDGE0001_HANDLED_INFO
             printf("\ngame_type: %d\n", game_type);
             printf("game_progress: %d\n", game_progress);
             printf("stage_remain_time: %d\n", stage_remain_time);
@@ -1287,12 +1348,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             //没开赛时:rx6HandleBuf[] = 3 0 0 0, while the first '3' is the length of rx6HandleBuf
             //rx6HandleBuf[1]:  己方飞镖发射剩余时间，单位:秒
             dart_remaining_time = rx6HandleBuf[1];
-#if JUDGE0105_INFO
+            dart_target = rx6HandleBuf[2] >> 6;
+#if JUDGE0105_RAW_INFO
             printf("0105:\n");
             for (int i = 0; i < rx6HandleBuf[0] + 1; ++i){
                 printf("%x ", rx6HandleBuf[i]);
             }
+#endif
+#if JUDGE0105_HANDLED_INFO
             printf("\ndart_remaining_time: %d\n", dart_remaining_time);
+            printf("\ndart_target: %d\n", dart_target);
             printf("\n");
 #endif
         }
@@ -1302,11 +1367,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             dart_launch_opening_status = rx6HandleBuf[1];
             //x6HandleBuf[3]: 切换击打目标时的比赛剩余时间，单位:秒，无/未切换动作，默认为 0。
             latest_launch_cmd_time = rx6HandleBuf[3];
-#if JUDGE020A_INFO
+#if JUDGE020A_RAW_INFO
             printf("020A:\n");
             for (int i = 0; i < rx6HandleBuf[0] + 1; ++i) {
                 printf("%x ", rx6HandleBuf[i]);
             }
+#endif
+#if JUDGE020A_HANDLED_INFO
             printf("\ndart_launch_opening_status: %d\n", dart_launch_opening_status);
             printf("latest_launch_cmd_time: %d\n", latest_launch_cmd_time);
             printf("\n");
@@ -1370,8 +1437,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     case '4':
                         furTarTen[3] = StrToInt(rxHandleBuf, 10, ')');
                         printf("ten[3]: %d\n", furTarTen[3]);
+#if !USE_game_progress_AND_stage_remain_time && !USE_dart_remaining_time
                         canShootFlag = 1;       //仅测试四发连发时使用
                         shootFlag = 1;         //仅测试四发连发时使用
+#endif
                     case '5':
                         furTarTen[4] = StrToInt(rxHandleBuf, 10, ')');
                         printf("ten[4]: %d\n", furTarTen[4]);

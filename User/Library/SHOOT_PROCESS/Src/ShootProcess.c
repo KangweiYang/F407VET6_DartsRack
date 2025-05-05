@@ -19,6 +19,7 @@ extern int left3508StopCont, right3508StopCont, releaseFlag;
 
 extern int furTarTen[4];
 extern int furTarYaw[4];
+extern int shooting;
 
 int feedFSMstate = 0;
 int backCont = 0;
@@ -364,14 +365,18 @@ void DartShoot(int dartSerial) {
 #endif
 
 #if !OLD_TRIGGER
-    while (feedSerial != 9)   {
-        printf("feedSerial = %d\n", feedSerial);
-        int32_t currentRelativeTick;
-        currentRelativeTick = HAL_GetTick() - loadStartTick;
-        NewFeedSystem(dartSerial, currentRelativeTick, 1);
-    }
+//    while (feedSerial != 9)   {
+//        printf("feedSerial = %d\n", feedSerial);
+//        int32_t currentRelativeTick;
+//        currentRelativeTick = HAL_GetTick() - loadStartTick;
+//        NewFeedSystem(dartSerial, currentRelativeTick, 1);
+//    }
+
+    shooting = 1;
     TriggerShoot();
     TriggerShoot();
+    HAL_Delay(600);
+    shooting = 0;
 #endif
 
 #if SHOOT_INFO

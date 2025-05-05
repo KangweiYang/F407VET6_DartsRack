@@ -161,9 +161,11 @@ void ServoLR_ToNextDart(int dartSerial) {
     if(dartSerial == 5) dartSerial = TEST_SHOOT_TO_TEST_FEED;
     switch (dartSerial) {
         case 3:
+            ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 0);
             ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_LEFT, 0);
             break;
         case 4:
+            ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 0);
             ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_RIGHT, 0);
             break;
     }
@@ -281,6 +283,7 @@ void ServoUD_UpToAvoidCrash(int dartSerial) {
 
 void ServoLR_ToNotEdge(int dartSerial) {
     if(dartSerial == 5) dartSerial = TEST_SHOOT_TO_TEST_FEED;
+    printf("TO NOT EDGE, dartSerial = %d\n", dartSerial);
     switch (dartSerial) {
         case 1:
             ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE, 0);

@@ -112,15 +112,16 @@ enum {
 enum {
     OUT_OF_GAME = 0, PREPARE, SELF_TEST_15S, COUNTDOWN_5S, IN_GAME, GAME_SETTLE
 }game_progress;
-int16_t stage_remain_time = -1;
+uint16_t stage_remain_time = 0;
 
 enum SILO_GATE
 {
     OPEN = 0, CLOSE, MOVING
 }dart_launch_opening_status;
-int16_t latest_launch_cmd_time = -1;
-int16_t dart_remaining_time = -1;
-int16_t dart_target = -1;
+uint16_t target_change_time = 0;
+uint16_t latest_launch_cmd_time = 0;
+uint16_t dart_remaining_time = 0;
+uint16_t dart_target = 0;
 
 /**
  * @brief    在缓冲区中查找指定字节并复制数据
@@ -374,7 +375,7 @@ void ShootOneDart(int dartSerial) {
                || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
                || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)
                || dart_remaining_time <= 0
-               || dart_launch_opening_status >= 1) {
+               || dart_launch_opening_status != OPEN) {
 #else
         while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
             || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
@@ -869,6 +870,7 @@ void AimbotSendData(CarData *carData,uint8_t len)
     }
 }
 
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     /*
     if (htim->Instance == htim7.Instance && targetYawPul != 0) {     //100us timer
@@ -1229,16 +1231,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         }
         //sonic range
 #endif
-        if(couut % 10 == 0){
+        if(couut % 10 == 0) {
 #if MOTOR_INFO
             for (int i = 0; i < 4; ++i){
                 printf("pos[%d] = %d, vel[%d] = %d, current[%d] = %d\n", i, pos[i], i, vel[i], i, current[i]);
             }
 #endif
 #if HALL_INFO
-        printf("BACK: %d, LEFT: %d, RIGHT: %d\n", HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin),
-               HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin),
-               HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin));
+            printf("BACK: %d, LEFT: %d, RIGHT: %d\n", HAL_GPIO_ReadPin(HALL_BACK_SW_GPIO_Port, HALL_BACK_SW_Pin),
+                   HAL_GPIO_ReadPin(HALL_LEFT_SW_GPIO_Port, HALL_LEFT_SW_Pin),
+                   HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin));
 #endif
 #if TEN_INFO
             printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, Kp: %.1lf, %.1lf, Ki: %.1lf, %.1lf, Kd: %.1lf, %.1lf\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], posKpStepper0, posKpStepper1, posKiStepper0, posKiStepper1, posKdStepper0, posKdStepper1);
@@ -1290,7 +1292,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 couut = 0;
             }
              */
-            if(contFromLastUart > CONT_TO_READY_TO_SHOOT && furTarTen[0] != 0  && shootFlag < 4)
+            if (contFromLastUart > CONT_TO_READY_TO_SHOOT && furTarTen[0] != 0 && shootFlag < 4)
                 DartFeedStartUp();
             couut = 0;
 /*
@@ -1311,73 +1313,86 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //                printf("%x", USART6RxBuf[i]);
 //            }
 #endif
-        }
-        uint8_t rx6HandleBuf[RX6_BUFF_LENGTH];
-        if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart0001, RX6_BUFF_LENGTH, rx6HandleBuf)) {
-            //没开赛时:rx6HandleBuf[] = b 51 0 0 0 0 0 0 0 0 0 0 , while the first 'b' = 11 is the length of rx6HandleBuf
-            //rx6HandleBuf[1]:
-            // bit 0-3:比赛类型
-            //• 1:RoboMaster 机甲大师超级对抗赛
-            //• 2:RoboMaster 机甲大师高校单项赛
-            //• 3:ICRA RoboMaster 高校人工智能挑战赛
-            //• 4:RoboMaster 机甲大师高校联盟赛 3V3 对抗 • 5:RoboMaster 机甲大师高校联盟赛步兵对抗 bit 4-7:当前比赛阶段
-            //• 0:未开始比赛
-            //• 1:准备阶段
-            //• 2:十五秒裁判系统自检阶段
-            //• 3:五秒倒计时
-            //• 4:比赛中
-            //• 5:比赛结算中
-            //rx6HandleBuf[2], [3]:当前阶段剩余时间，单位:秒
-            game_type = rx6HandleBuf[1] & 0xF;
-            game_progress = rx6HandleBuf[1] >> 4;
-            stage_remain_time = rx6HandleBuf[2] | (rx6HandleBuf[3] << 8);
+            uint8_t rx6HandleBuf[RX6_BUFF_LENGTH];
+            if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart0001, RX6_BUFF_LENGTH, rx6HandleBuf)) {
+                if (rx6HandleBuf[0] == 0x0b) {
+                    //没开赛时:rx6HandleBuf[] = b 51 0 0 0 0 0 0 0 0 0 0 , while the first 'b' = 11 is the length of rx6HandleBuf
+                    //rx6HandleBuf[1]:
+                    // bit 0-3:比赛类型
+                    //• 1:RoboMaster 机甲大师超级对抗赛
+                    //• 2:RoboMaster 机甲大师高校单项赛
+                    //• 3:ICRA RoboMaster 高校人工智能挑战赛
+                    //• 4:RoboMaster 机甲大师高校联盟赛 3V3 对抗 • 5:RoboMaster 机甲大师高校联盟赛步兵对抗 bit 4-7:当前比赛阶段
+                    //• 0:未开始比赛
+                    //• 1:准备阶段
+                    //• 2:十五秒裁判系统自检阶段
+                    //• 3:五秒倒计时
+                    //• 4:比赛中
+                    //• 5:比赛结算中
+                    //rx6HandleBuf[2], [3]:当前阶段剩余时间，单位:秒
+                    game_type = rx6HandleBuf[1] & 0xF;
+                    game_progress = rx6HandleBuf[1] >> 4;
+                    stage_remain_time = rx6HandleBuf[2] | (rx6HandleBuf[3] << 8);
+
 #if JUDGE0001_RAW_INFO
-            printf("0001:\n");
-            for (int i = 0; i < rx6HandleBuf[0] + 1; ++i){
-                printf("%x ", rx6HandleBuf[i]);
-            }
+                    printf("0001:\n");
+                    for (int i = 0; i < rx6HandleBuf[0] + 1; ++i) {
+                        printf("%x ", rx6HandleBuf[i]);
+                    }
 #endif
 #if JUDGE0001_HANDLED_INFO
-            printf("\ngame_type: %d\n", game_type);
-            printf("game_progress: %d\n", game_progress);
-            printf("stage_remain_time: %d\n", stage_remain_time);
-            printf("\n");
+                    printf("\ngame_type: %d\n", game_type);
+                    printf("game_progress: %d\n", game_progress);
+                    printf("stage_remain_time: %d\n", stage_remain_time);
+                    printf("\n");
 #endif
-        }
-        if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart0105, RX6_BUFF_LENGTH, rx6HandleBuf)) {
-            //没开赛时:rx6HandleBuf[] = 3 0 0 0, while the first '3' is the length of rx6HandleBuf
-            //rx6HandleBuf[1]:  己方飞镖发射剩余时间，单位:秒
-            dart_remaining_time = rx6HandleBuf[1];
-            dart_target = rx6HandleBuf[2] >> 6;
-#if JUDGE0105_RAW_INFO
-            printf("0105:\n");
-            for (int i = 0; i < rx6HandleBuf[0] + 1; ++i){
-                printf("%x ", rx6HandleBuf[i]);
+                }
             }
+            if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart0105, RX6_BUFF_LENGTH, rx6HandleBuf)) {
+                if (rx6HandleBuf[0] == 0x03) {
+                    //没开赛时:rx6HandleBuf[] = 3 0 0 0, while the first '3' is the length of rx6HandleBuf
+                    //rx6HandleBuf[1]:  己方飞镖发射剩余时间，单位:秒
+                    dart_remaining_time = rx6HandleBuf[1];
+                    dart_target = rx6HandleBuf[2] >> 6;
+
+#if JUDGE0105_RAW_INFO
+                    printf("0105:\n");
+                    for (int i = 0; i < rx6HandleBuf[0] + 1; ++i) {
+                        printf("%x ", rx6HandleBuf[i]);
+                    }
 #endif
 #if JUDGE0105_HANDLED_INFO
-            printf("\ndart_remaining_time: %d\n", dart_remaining_time);
-            printf("\ndart_target: %d\n", dart_target);
-            printf("\n");
+                    printf("\ndart_remaining_time: %d\n", dart_remaining_time);
+                    printf("\ndart_target: %d\n", dart_target);
+                    printf("\n");
 #endif
-        }
-        if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart020A, RX6_BUFF_LENGTH, rx6HandleBuf)) {
-            //没开赛时:rx6HandleBuf[] = 6 0 0 0 0 0 0, while the first '6' is the length of rx6HandleBuf
-            //rx6HandleBuf[1]:  1:关闭 2:正在开启或者关闭中 0:已经开启
-            dart_launch_opening_status = rx6HandleBuf[1];
-            //x6HandleBuf[3]: 切换击打目标时的比赛剩余时间，单位:秒，无/未切换动作，默认为 0。
-            latest_launch_cmd_time = rx6HandleBuf[3];
-#if JUDGE020A_RAW_INFO
-            printf("020A:\n");
-            for (int i = 0; i < rx6HandleBuf[0] + 1; ++i) {
-                printf("%x ", rx6HandleBuf[i]);
+                }
             }
+            if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart020A, RX6_BUFF_LENGTH, rx6HandleBuf)) {
+                if (rx6HandleBuf[0] == 0x06) {
+                    //没开赛时:rx6HandleBuf[] = 6 0 0 0 0 0 0, while the first '6' is the length of rx6HandleBuf
+                    //rx6HandleBuf[1]:  1:关闭 2:正在开启或者关闭中 0:已经开启
+                    dart_launch_opening_status = rx6HandleBuf[1];
+                    //rx6HandleBuf[3-4]: 切换击打目标时的比赛剩余时间，单位:秒，无/未切换动作，默认为 0。
+                    target_change_time = rx6HandleBuf[3] | (rx6HandleBuf[4] << 8);
+                    //rx6HandleBuf[5-6]: 最后一次操作手确定发射指令时的比赛剩余时间，单位:秒，默认为 0。
+                    latest_launch_cmd_time = rx6HandleBuf[5] | (rx6HandleBuf[6] << 8);
+
+
+#if JUDGE020A_RAW_INFO
+                    printf("020A:\n");
+                    for (int i = 0; i < rx6HandleBuf[0] + 1; ++i) {
+                        printf("%x ", rx6HandleBuf[i]);
+                    }
 #endif
 #if JUDGE020A_HANDLED_INFO
-            printf("\ndart_launch_opening_status: %d\n", dart_launch_opening_status);
-            printf("latest_launch_cmd_time: %d\n", latest_launch_cmd_time);
-            printf("\n");
+                    printf("\ntarget_change_time: %d\n", target_change_time);
+                    printf("\ndart_launch_opening_status: %d\n", dart_launch_opening_status);
+                    printf("latest_launch_cmd_time: %d\n", latest_launch_cmd_time);
+                    printf("\n");
 #endif
+                }
+            }
         }
         if(resetFeedCont > 0)   resetFeedCont--;
         else if (resetFeedCont == 0) {

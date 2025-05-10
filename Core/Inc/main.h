@@ -113,8 +113,10 @@ void SystemClock_Config(void);
 #define TOTAL_DART_NUM  4
 #define CONT_TO_READY_TO_SHOOT  10         //100ms
 #define SHOOT_BREAK  300         //100ms
-#define START_TENSION_R   190
-#define START_TENSION_L   198
+#define USE_game_progress_AND_stage_remain_time     0   //使用比赛剩余时间来触发飞镖
+#define USE_dart_remaining_time                     1   //使用己方飞镖发射剩余时间
+#define START_TENSION_R   120//190
+#define START_TENSION_L   120//190
 
 //stepper
 #define STEPPER_PARAS_TEST  0
@@ -190,7 +192,7 @@ void SystemClock_Config(void);
 #define DELAY_AFTER_GRASP_DART           200  // After ServoGrasp_GraspNextDart
 #define DELAY_AFTER_UP_TO_MOVE           200  // After ServoUD_UpToMove
 #define DELAY_AFTER_TO_MIDDLE            200  // After ServoLR_ToMiddle
-#define DELAY_AFTER_DOWN_TO_RELEASE      500  // After ServoUD_DownToRelease
+#define DELAY_AFTER_DOWN_TO_RELEASE      650  // After ServoUD_DownToRelease
 #define DELAY_AFTER_RELEASE_DART         200  // After ServoGrasp_Realease
 #define DELAY_AFTER_UP_TO_AVOID_CRASH    300  // After ServoUD_UpToAvoidCrash
 
@@ -218,12 +220,12 @@ void SystemClock_Config(void);
 #define RS485_LIGHT_INFO    0
 #define SHOOT_INFO  1
 #define JUDGE_INFO  0
-#define JUDGE020A_HANDLED_INFO 0
-#define JUDGE0105_HANDLED_INFO 0
-#define JUDGE0001_HANDLED_INFO 0
-#define JUDGE020A_RAW_INFO 0
-#define JUDGE0105_RAW_INFO 0
-#define JUDGE0001_RAW_INFO 0
+#define JUDGE020A_HANDLED_INFO 1
+#define JUDGE0105_HANDLED_INFO 1
+#define JUDGE0001_HANDLED_INFO 1
+#define JUDGE020A_RAW_INFO 1
+#define JUDGE0105_RAW_INFO 1
+#define JUDGE0001_RAW_INFO 1
 #else
 #define CAN_INFO    0
 #define MOTOR_INFO  0
@@ -290,6 +292,7 @@ extern double integralBias[2];
 #define RESET_SPEED 700
 #define LOAD_SPEED  4500//3400
 #define LOAD_DELAY  50//100
+#define AFTER_LOAD_DELAY  200
 #define RELEASE_SPEED   -4600//-3000
 #define ERROR_LOAD_SPEED   2000
 #define RELEASE_DELAY_TENION_CONTROL    800    //释放后相隔多少ms后开始拉力闭环控制
@@ -307,24 +310,23 @@ extern double integralBias[2];
 
 //judge system uart
 #define RX6_BUFF_LENGTH 10000
-#define USE_game_progress_AND_stage_remain_time     1   //使用比赛剩余时间来触发飞镖
+#define RX6_FIND_BUFF_LENGTH 5000
 #define START_LOAD_TIME1    (7*60-30)       //390开始拉
 #define START_SHOOT_TIME1    (7*60-30-7)    //383开始射
 #define STOP_SHOOT_TIME1    (7*60-30-27)    //363停止射
 #define START_LOAD_TIME2    (7*60-4*60)     //180开始拉
 #define START_SHOOT_TIME2    (7*60-4*60-7)  //173开始射
 #define STOP_SHOOT_TIME2    (7*60-4*60-27)  //153停止射
-#define USE_dart_remaining_time                     0   //使用己方飞镖发射剩余时间
 
 //remote
 #define MANUAL_YAW  1
 #define USE_REMOTE  0
 #define AIMBOT_MODE 1  // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
-#define AIMBOT_DEBUG    0
+#define AIMBOT_DEBUG    1
 #define AIMBOT_KP   0.00018//0.09
 #define AIMBOT_KI   0.00006
 #define AIMBOT_KD   0.005//0.0
-#define AIMBOT_SET_ZERO 1
+#define AIMBOT_SET_ZERO     4
 #define AIMBOT_MAX_SPEED    50
 //#define AIMBOT_PID  (AIMBOT_KP * ((float )yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float ) yaw_error - targetYawPul - lastYawError))
 #define AIMBOT_PID  (AIMBOT_KP * ((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float)yaw_error - targetYawPul - lastYawError))

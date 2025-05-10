@@ -250,6 +250,7 @@ void DartLoad(int loadSpeed, int dartSerial) {
     HAL_Delay(LOAD_DELAY);
     TriggerReset();
     TriggerReset();
+    HAL_Delay(AFTER_LOAD_DELAY);
 #if SHOOT_INFO
     printf("DART LOAD OK!\n");
 #endif

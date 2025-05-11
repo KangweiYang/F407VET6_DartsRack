@@ -374,7 +374,7 @@ void ShootOneDart(int dartSerial) {
             while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
                || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
                || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)
-               || dart_remaining_time <= 0
+               || dart_remaining_time == 0
                || dart_launch_opening_status != OPEN) {
 #else
         while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
@@ -589,13 +589,15 @@ int main(void) {
           canShootFlag = 0;
       }
 #elif USE_dart_remaining_time
-      if(USE_dart_remaining_time > 0){
+      static uint16_t lastDart_launch_opening_status;
+      if(dart_remaining_time > 0 || (lastDart_launch_opening_status == 1 && dart_launch_opening_status == 2)){
           canShootFlag = 1;
           if(shootFlag == 0) shootFlag = 1;
       }
-      else if(USE_dart_remaining_time == 0 && shootFlag > 0){
+      else if((dart_remaining_time == 0 && shootFlag > 0) || (lastDart_launch_opening_status == 0 && dart_launch_opening_status == 2)){
           canShootFlag = 0;
       }
+      if(lastDart_launch_opening_status != dart_launch_opening_status)  lastDart_launch_opening_status = dart_launch_opening_status;
 #endif
         if(tension1SetZeroFlag){
             RS485_1_SetTensionZero();
@@ -996,7 +998,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             }
         }
 #endif
-            if (cont == 10) {                           //10ms
+            if (cont == 6) {                           //10ms
             static double integralBias[2];
                 //AIMBOT UART
                 HAL_UART_Receive_DMA(&huart5, _rx_buf, 18);
@@ -1178,7 +1180,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 _rx_buf[i] = '\0';
             }
         } else {
-//            target_status = 0;
+            target_status = 0;
 
 //            printf("yaw_error = %f\n", yaw_error);
 //            printf("target_status = %d\n", target_status);
@@ -1190,11 +1192,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         static uint16_t pointer, couut;
         couut++;
         static int32_t lastTension1, lastTensionL;
-        if(HAL_GPIO_ReadPin(DART_STOP_SW_GPIO_Port, DART_STOP_SW_Pin) == GPIO_PIN_RESET) {
+        if(HAL_GPIO_ReadPin(DART_STOP_SW_GPIO_Port, DART_STOP_SW_Pin) == GPIO_PIN_RESET && shootFlag == 0) {
             ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 0);
         } else if(shootFlag == 0) {
             ServoSet(SERVO_GRASP, SERVO_GRASP_GRASP, 0);
         }
+//        printf("dart_launch_opening_status = %d\n", dart_launch_opening_status);
+//        printf("shootFlag = %d\n", shootFlag);
+//        printf("canShootFlag = %d\n", canShootFlag);
         if(backCont){
             if(backCont <= 1){
                 DartFeedStopDown();
@@ -1413,18 +1418,26 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     case '1':
                         furTarYaw[0] = StrToInt(rxHandleBuf, 10, ')');
                         printf("yaw[0]: %d\n", furTarYaw[0]);
+                        StepperStop(STEPPER1);
+                        StepperStop(STEPPER2);
                         break;
                     case '2':
                         furTarYaw[1] = StrToInt(rxHandleBuf, 10, ')');
                         printf("yaw[1]: %d\n", furTarYaw[1]);
+                        StepperStop(STEPPER1);
+                        StepperStop(STEPPER2);
                         break;
                     case '3':
                         furTarYaw[2] = StrToInt(rxHandleBuf, 10, ')');
                         printf("yaw[2]: %d\n", furTarYaw[2]);
+                        StepperStop(STEPPER1);
+                        StepperStop(STEPPER2);
                         break;
                     case '4':
                         furTarYaw[3] = StrToInt(rxHandleBuf, 10, ')');
                         printf("yaw[3]: %d\n", furTarYaw[3]);
+                        StepperStop(STEPPER1);
+                        StepperStop(STEPPER2);
                         break;
                     case '5':
                         furTarYaw[4] = StrToInt(rxHandleBuf, 10, ')');
@@ -1440,18 +1453,26 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     case '1':
                         furTarTen[0] = StrToInt(rxHandleBuf, 10, ')');
                         printf("ten[0]: %d\n", furTarTen[0]);
+                        StepperStop(STEPPER1);
+                        StepperStop(STEPPER2);
                         break;
                     case '2':
                         furTarTen[1] = StrToInt(rxHandleBuf, 10, ')');
                         printf("ten[1]: %d\n", furTarTen[1]);
+                        StepperStop(STEPPER1);
+                        StepperStop(STEPPER2);
                         break;
                     case '3':
                         furTarTen[2] = StrToInt(rxHandleBuf, 10, ')');
                         printf("ten[2]: %d\n", furTarTen[2]);
+                        StepperStop(STEPPER1);
+                        StepperStop(STEPPER2);
                         break;
                     case '4':
                         furTarTen[3] = StrToInt(rxHandleBuf, 10, ')');
                         printf("ten[3]: %d\n", furTarTen[3]);
+                        StepperStop(STEPPER1);
+                        StepperStop(STEPPER2);
 #if !USE_game_progress_AND_stage_remain_time && !USE_dart_remaining_time
                         canShootFlag = 1;       //仅测试四发连发时使用
                         shootFlag = 1;         //仅测试四发连发时使用

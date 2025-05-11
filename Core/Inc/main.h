@@ -115,8 +115,8 @@ void SystemClock_Config(void);
 #define SHOOT_BREAK  300         //100ms
 #define USE_game_progress_AND_stage_remain_time     0   //使用比赛剩余时间来触发飞镖
 #define USE_dart_remaining_time                     1   //使用己方飞镖发射剩余时间
-#define START_TENSION_R   120//190
-#define START_TENSION_L   120//190
+#define START_TENSION_R   193//190
+#define START_TENSION_L   215//190
 
 //stepper
 #define STEPPER_PARAS_TEST  0
@@ -322,7 +322,7 @@ extern double integralBias[2];
 #define MANUAL_YAW  1
 #define USE_REMOTE  0
 #define AIMBOT_MODE 1  // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
-#define AIMBOT_DEBUG    1
+#define AIMBOT_DEBUG    0
 #define AIMBOT_KP   0.00018//0.09
 #define AIMBOT_KI   0.00006
 #define AIMBOT_KD   0.005//0.0

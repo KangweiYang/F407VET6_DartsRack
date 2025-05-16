@@ -281,8 +281,6 @@ void UserInit(void) {
 
 //    StepperTensionControlStart(1);
 //    HAL_TIM_Base_Start_IT(&htim7);
-    stepper0Flag = 1;
-    stepper1Flag = 1;
     for (int i = 0; i < 20; ++i){
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
@@ -375,7 +373,9 @@ void ShootOneDart(int dartSerial) {
                || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
                || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)
                || dart_remaining_time == 0
-               || dart_launch_opening_status != OPEN) {
+               || dart_launch_opening_status != OPEN
+               || game_progress != IN_GAME
+               || dart_target == 0) {
 #else
         while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
             || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
@@ -590,11 +590,11 @@ int main(void) {
       }
 #elif USE_dart_remaining_time
       static uint16_t lastDart_launch_opening_status;
-      if(dart_remaining_time > 0 || (lastDart_launch_opening_status == 1 && dart_launch_opening_status == 2)){
+      if(game_progress == IN_GAME && dart_target != 0 && (dart_remaining_time > 0 || (lastDart_launch_opening_status == 1 && dart_launch_opening_status == 2))){
           canShootFlag = 1;
           if(shootFlag == 0) shootFlag = 1;
       }
-      else if((dart_remaining_time == 0 && shootFlag > 0) || (lastDart_launch_opening_status == 0 && dart_launch_opening_status == 2)){
+      else if((dart_remaining_time <= LEAST_SHOOT_TIME && shootFlag > 0) || (lastDart_launch_opening_status == 0 && dart_launch_opening_status == 2)){
           canShootFlag = 0;
       }
       if(lastDart_launch_opening_status != dart_launch_opening_status)  lastDart_launch_opening_status = dart_launch_opening_status;
@@ -609,17 +609,18 @@ int main(void) {
         }
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
-        if(tension1 == targetTen[0] && tensionL == targetTen[1]){
+        static int32_t lastTension1, lastTensionL;
+        if(stepper0Flag == 1 && tension1 == targetTen[0] && tensionL == targetTen[1] && lastTension1 == targetTen[0] && lastTensionL == targetTen[1]){
             HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
             stepper0Flag = 0;
             stepper1Flag = 0;
         }
         if(contFromLastUart >= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK && contFromLastUart <= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK + 10){
-            stepper0Flag = 1;
-            stepper1Flag = 1;
-            targetTen[0] = START_TENSION_R;
-            targetTen[1] = START_TENSION_L;
-            HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+//            stepper0Flag = 1;
+//            stepper1Flag = 1;
+//            targetTen[0] = START_TENSION_R;
+//            targetTen[1] = START_TENSION_L;
+//            HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
         }
         if(shootFlag == 5){
             ShootOneDart(5);
@@ -717,11 +718,11 @@ double stepper_Kp[90] = {
         70,66,70,65,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
-        60,56,46,45,44,39,37, 36,35, 34,            // 425-465
-        33,27,26,25,24,23,27,27,26,25,            // 475-515
+        60,56,46,45,44,39,37, 36,35, 32,            // 425-465
+        30,27,26,25,24,23,23,21,20,16,            // 475-515
 
         // 520-580指数衰减（40→24）
-        29,28,27,29,28,27,26,25,24,23,            // 525-575
+        13,12,12,29,28,27,26,25,24,23,            // 525-575
 
         // 580-700对数保持（24）
         19.5,19,18.5,18,17.5,17,16.5,16,15.5,15,            // 585-675
@@ -998,7 +999,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             }
         }
 #endif
-            if (cont == 6) {                           //10ms
+            if (cont == 10) {                           //10ms
             static double integralBias[2];
                 //AIMBOT UART
                 HAL_UART_Receive_DMA(&huart5, _rx_buf, 18);

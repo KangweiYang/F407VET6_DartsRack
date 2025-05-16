@@ -114,7 +114,7 @@ void SystemClock_Config(void);
 #define CONT_TO_READY_TO_SHOOT  10         //100ms
 #define SHOOT_BREAK  300         //100ms
 #define USE_game_progress_AND_stage_remain_time     0   //使用比赛剩余时间来触发飞镖
-#define USE_dart_remaining_time                     1   //使用己方飞镖发射剩余时间
+#define USE_dart_remaining_time                     1   //使用己方飞镖发射剩余时间和闸门状态来发射飞镖
 #define START_TENSION_R   193//190
 #define START_TENSION_L   215//190
 
@@ -126,7 +126,7 @@ void SystemClock_Config(void);
 #define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
 #define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
 #define STEPPER2_VS_1   1
-#define STILL_RATE  1.5
+#define STILL_RATE  1.9
 #define STEPPER_CHANGE_TO_SMALL_K   14
 #define STEPPER1BIGKP 430
 #define STEPPER1BIGKD 150
@@ -186,7 +186,7 @@ void SystemClock_Config(void);
 #define SERVO_LEFT_RIGHT_MIDDLE     ((SERVO_LEFT_RIGHT_LEFT + SERVO_LEFT_RIGHT_RIGHT)/2) //40
 
 //FEED
-#define TEST_SHOOT_TO_TEST_FEED          4
+#define TEST_SHOOT_TO_TEST_FEED          1
 #define DELAY_AFTER_TO_NEXT_DART         500  // After ServoUpDown_DownToGrasp    //ms
 #define DELAY_AFTER_DOWN_TO_GRASP        400  // After ServoUpDown_DownToGrasp    //ms
 #define DELAY_AFTER_GRASP_DART           200  // After ServoGrasp_GraspNextDart
@@ -248,7 +248,7 @@ void SystemClock_Config(void);
 //stepper1,2 dir
 
 #define STEPPER1_MAX_PUL  1900
-#define STEPPER2_MAX_PUL  STEPPER1_MAX_PUL
+#define STEPPER2_MAX_PUL  1900
 #define STEPPER1_2_MIN_CHANGE   (1200 / 20)
 
 #define STEPPER1_2_DIR  -1
@@ -274,7 +274,7 @@ extern double integralBias[2];
 #define INTEGRAL_SET_ZERO   0
 #define KI_DIVIDE   2000
 //rs485
-#define RS485_MUTATION_THRESHOLD    50
+#define RS485_MUTATION_THRESHOLD    5
 #define RS485_NORMAL    1
 #if RS485_NORMAL
 #define HRS485_1_USART  &huart2
@@ -294,8 +294,9 @@ extern double integralBias[2];
 #define LOAD_DELAY  50//100
 #define AFTER_LOAD_DELAY  200
 #define RELEASE_SPEED   -4600//-3000
+#define RELEASE_OK_DELAY   100//-3000
 #define ERROR_LOAD_SPEED   2000
-#define RELEASE_DELAY_TENION_CONTROL    800    //释放后相隔多少ms后开始拉力闭环控制
+#define RELEASE_DELAY_TENION_CONTROL    1100    //释放后相隔多少ms后开始拉力闭环控制
 #define SHOOT_SPEED -3000
 #define WAIT_TIMES  2           //当连续出现几次目标拉力值时发射
 #define LOAD_BACK_TIME_100MS    1       //2是100ms，1是不后退
@@ -317,6 +318,7 @@ extern double integralBias[2];
 #define START_LOAD_TIME2    (7*60-4*60)     //180开始拉
 #define START_SHOOT_TIME2    (7*60-4*60-7)  //173开始射
 #define STOP_SHOOT_TIME2    (7*60-4*60-27)  //153停止射
+#define LEAST_SHOOT_TIME     4             //当剩余发射时间小于等于x秒时，不再装填下一发
 
 //remote
 #define MANUAL_YAW  1

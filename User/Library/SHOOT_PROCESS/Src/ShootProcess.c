@@ -339,7 +339,7 @@ void DartRelease(int dartSerial) {
     targetVel[1] = 0;
     left3508StopCont = -1;
     triggerResetFlag = 0;
-    HAL_Delay(200);
+    HAL_Delay(RELEASE_OK_DELAY);
 #if SHOOT_INFO
     printf("DART RELEASE OK!\n");
 #endif

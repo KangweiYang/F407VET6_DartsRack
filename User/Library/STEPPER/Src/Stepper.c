@@ -8,7 +8,7 @@
 #include "usart.h"
 #include "tim.h"
 
-static int16_t lastFreq[4] = {1, 1, 1, 1};
+static int16_t lastFreq[4] = {-1, -1, 1, 1};
 extern int32_t tension1;
 extern int32_t tension2;
 extern int16_t stepper0Speed;
@@ -46,7 +46,8 @@ void StepperSetSpeed(TIM_HandleTypeDef *htim, uint32_t channel, int16_t frequenc
 //    printf("prescaler = %d \n",  APB2_FREQ / frequency / HALF_COMPARE / 2);
 #endif
     if(frequency < 0)   frequency = -frequency;
-    if(htim == &htim3)   __HAL_TIM_SET_PRESCALER(htim, APB2_FREQ / frequency / HALF_COMPARE / 4);
+    if(htim == &htim3)   __HAL_TIM_SET_PRESCALER(htim, APB2_FREQ / frequency / HALF_COMPARE / 2);
+    if(htim == &htim1)   __HAL_TIM_SET_PRESCALER(htim, APB2_FREQ / frequency / HALF_COMPARE / 2);
     else    __HAL_TIM_SET_PRESCALER(htim, APB2_FREQ / frequency / HALF_COMPARE / 2);
 }
 

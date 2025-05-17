@@ -8,7 +8,7 @@
 #include "usart.h"
 #include "tim.h"
 
-static int16_t lastFreq[4] = {-1, -1, 1, 1};
+static int16_t lastFreq[4] = {1, 1, 1, 1};
 extern int32_t tension1;
 extern int32_t tension2;
 extern int16_t stepper0Speed;

@@ -372,10 +372,10 @@ void ShootOneDart(int dartSerial) {
             while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
                || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
                || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)
-               || dart_remaining_time == 0
+               || ((dart_remaining_time == 0
                || dart_launch_opening_status != OPEN
                || game_progress != IN_GAME
-               || dart_target == 0) {
+               || dart_target == 0) && shootFlag != 5)) {
 #else
         while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
             || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
@@ -948,6 +948,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //        lastYawSpeed = UART_TargetYawSpeed;
 #if AIMBOT_MODE
 //        static int16_t aimbotDelayCont = 0;
+        static int32_t aim_lost_cont;
 #if AIMBOT_DEBUG
         if(target_status && shooting == 0){                  //如果检测到绿灯且不在发射中
 #else
@@ -975,10 +976,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //            UART_TargetYawSpeed = yaw_error / 5;
 //                printf("UART_TargetYawSpeed = %d\n", UART_TargetYawSpeed);
 //            }
-            StepperSetSpeed(STEPPER3, (int16_t) AIMBOT_PID);
-        } else {
-//            StepperStop(STEPPER3);
+            StepperSetSpeed(STEPPER3, (int16_t) UART_TargetYawSpeed);
+            aim_lost_cont = 0;
+        } else if(target_status == 0){
+            aim_lost_cont ++;
+//            printf("aim lost cont = %d\n", aim_lost_cont);
+            if(aim_lost_cont >= AIMBOT_SET_STEPPER3_ZERO_THRESOLD){
+                aim_lost_cont = 0;
+                StepperSetSpeed(STEPPER3, 0);
+            }
         }
+#if AIMBOT_DEBUG
+//        if(canShootFlag == 0 && shootFlag != 0) StepperStop(STEPPER3);
+#endif
         lastYawError = yaw_error - targetYawPul;
 #endif
         //手动调yaw

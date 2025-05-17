@@ -125,7 +125,7 @@ void SystemClock_Config(void);
 #define STEPPER2    &htim3, TIM_CHANNEL_1   //PA6
 #define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
 #define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
-#define STEPPER2_VS_1   1
+#define STEPPER2_VS_1   1.9
 #define STILL_RATE  1.9
 #define STEPPER_CHANGE_TO_SMALL_K   14
 #define STEPPER1BIGKP 430
@@ -248,7 +248,7 @@ void SystemClock_Config(void);
 //stepper1,2 dir
 
 #define STEPPER1_MAX_PUL  1900
-#define STEPPER2_MAX_PUL  1900
+#define STEPPER2_MAX_PUL  4000
 #define STEPPER1_2_MIN_CHANGE   (1200 / 20)
 
 #define STEPPER1_2_DIR  -1
@@ -324,19 +324,20 @@ extern double integralBias[2];
 #define MANUAL_YAW  1
 #define USE_REMOTE  0
 #define AIMBOT_MODE 1  // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
-#define AIMBOT_DEBUG    0
-#define AIMBOT_KP   0.00018//0.09
-#define AIMBOT_KI   0.00006
-#define AIMBOT_KD   0.005//0.0
+#define AIMBOT_DEBUG    1
+#define AIMBOT_SET_STEPPER3_ZERO_THRESOLD   300     //多少次丢目标后就停止yaw
+#define AIMBOT_KP   0.0004//0.09
+#define AIMBOT_KI   0.00009
+#define AIMBOT_KD   0.012//0.0
 #define AIMBOT_SET_ZERO     4
-#define AIMBOT_MAX_SPEED    50
+#define AIMBOT_MAX_SPEED    700
 //#define AIMBOT_PID  (AIMBOT_KP * ((float )yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float ) yaw_error - targetYawPul - lastYawError))
 #define AIMBOT_PID  (AIMBOT_KP * ((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float)yaw_error - targetYawPul - lastYawError))
 //#define AIMBOT_PID  (AIMBOT_KP * ((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float)yaw_error - targetYawPul - lastYawError))
 #define AIMBOT_CONTROL_DELAY    5000
-#define INTEGRAL_YAW_START_BIAS 130
+#define INTEGRAL_YAW_START_BIAS 200
 #define INTEGRAL_YAW_BIAS_SUB   0
-#define INTEGRAL_YAW_MAX        1000000
+#define INTEGRAL_YAW_MAX        0//100000
 #define INTEGRAL_YAW_SET_ZERO       8
 #define INTEGRAL_SET_ZERO       0
 

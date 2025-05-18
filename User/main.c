@@ -292,7 +292,7 @@ void UserInit(void) {
 //    RemoteInit();
 
 #if USE_RELAY_CONTROL
-    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
 #endif
 
 }
@@ -387,30 +387,33 @@ void ShootOneDart(int dartSerial) {
                || ((dart_remaining_time == 0
                || dart_launch_opening_status != OPEN
                || game_progress != IN_GAME
-               || dart_target == 0) && shootFlag != 5)
-               || (yaw_error - (float)targetYawPul) >= SHOOT_YAW_THRESOLD || (yaw_error - (float)targetYawPul) <= -SHOOT_YAW_THRESOLD) {
-                printf("循环继续原因：");
-                if (tension1 != targetTen[0])           printf(" tension1未达目标");
-                if (tensionL != targetTen[1])           printf(" tensionL未达目标");
-                if (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
-                    printf(" prevTen1历史不一致");
-                if (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)
-                    printf(" prevTenL历史不一致");
-                if ((dart_remaining_time == 0
-                     || dart_launch_opening_status != OPEN
-                     || game_progress != IN_GAME
-                     || dart_target == 0) && shootFlag != 5)
-                    printf(" 发射条件未就绪");
-                if ((yaw_error - (float)targetYawPul) >= SHOOT_YAW_THRESOLD ||
-                    (yaw_error - (float)targetYawPul) <= -SHOOT_YAW_THRESOLD)
-                    printf(" 偏航误差超阈值");
-                printf("\n");
+               || dart_target == 0) && shootFlag != 5)){
+//               || (target_status && (yaw_error - (float)targetYawPul) >= SHOOT_YAW_THRESOLD || (yaw_error - (float)targetYawPul) <= -SHOOT_YAW_THRESOLD)) {
+
+#if SHOOT_INFO
+//                printf("循环继续原因：");
+//                if (tension1 != targetTen[0])           printf(" tension1未达目标");
+//                if (tensionL != targetTen[1])           printf(" tensionL未达目标");
+//                if (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
+//                    printf(" prevTen1历史不一致");
+//                if (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)
+//                    printf(" prevTenL历史不一致");
+//                if ((dart_remaining_time == 0
+//                     || dart_launch_opening_status != OPEN
+//                     || game_progress != IN_GAME
+//                     || dart_target == 0) && shootFlag != 5)
+//                    printf(" 发射条件未就绪");
+//                if ((yaw_error - (float)targetYawPul) >= SHOOT_YAW_THRESOLD ||
+//                    (yaw_error - (float)targetYawPul) <= -SHOOT_YAW_THRESOLD)
+//                    printf(" 偏航误差超阈值");
+//                printf("\n");
+#endif
 #else
         while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
             || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
             || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)) {
 #endif
-                printf("yaw_error = %f, targetYawPul = %d, shootFlag = %d\n", yaw_error, targetYawPul, shootFlag);
+//                printf("yaw_error = %f, targetYawPul = %d, shootFlag = %d\n", yaw_error, targetYawPul, shootFlag);
             shooting = 0;
             stepper0Flag = 1;
             stepper1Flag = 1;
@@ -450,7 +453,7 @@ void ShootOneDart(int dartSerial) {
 #if USE_RELAY_CONTROL
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
 #endif
-    HAL_Delay(500);
+//    HAL_Delay(500);
 }
 
 /**
@@ -683,9 +686,9 @@ int main(void) {
         if (canShootFlag && furTarTen[1] != 0 && shootFlag <= 4 && shootFlag > 1){
             printf("shootFlag: %d\n", shootFlag);
             ShootOneDart(shootFlag);
-            HAL_Delay(1000);
+//            HAL_Delay(1000);
             if(shootFlag == TOTAL_DART_NUM)  {
-                shootFlag = 0;
+                if(game_progress != IN_GAME && game_type != 1)  shootFlag = 0;
                 canShootFlag = 0;
                 DartFeedStartDown();
                 StepperStart(STEPPER4);
@@ -696,6 +699,7 @@ int main(void) {
 #endif
             } else{
                 shootFlag++;
+                if(furTarTen[shootFlag - 1] == 0)   canShootFlag = 0;
             }
         }
         if (canShootFlag && furTarTen[1] != 0 && shootFlag == 1) {
@@ -703,7 +707,8 @@ int main(void) {
 //            ShootFirstDart();               //这里会让测力离线
             ShootOneDart(shootFlag);
             shootFlag++;
-            HAL_Delay(1000);
+            if(targetTen[shootFlag - 1] == 0)   canShootFlag = 0;
+//            HAL_Delay(1000);
         }
     }
     /* USER CODE BEGIN 3 */
@@ -771,11 +776,11 @@ double stepper_Kp[90] = {
         70,66,70,65,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
-        60,56,46,45,44,39,28, 24,22, 20,            // 425-465
-        19,18,17,16,24,23,23,21,20,16,            // 475-515
+        60,38,34,30,28,26,25, 24,22, 20,            // 425-465
+        19,18,17,16,15,15,14,14,13,13,            // 475-515
 
         // 520-580指数衰减（40→24）
-        13,12,12,29,28,27,26,25,24,23,            // 525-575
+        13,12,12,11,11,11,10,10,10,10,            // 525-575
 
         // 580-700对数保持（24）
         19.5,19,18.5,18,17.5,17,16.5,16,15.5,15,            // 585-675

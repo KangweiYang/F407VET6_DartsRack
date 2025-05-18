@@ -376,7 +376,7 @@ void DartShoot(int dartSerial) {
     shooting = 1;
     TriggerShoot();
     TriggerShoot();
-    HAL_Delay(600);
+//    HAL_Delay(600);
     shooting = 0;
 #endif
 

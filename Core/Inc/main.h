@@ -212,6 +212,7 @@ void SystemClock_Config(void);
 #define ADC_DMA_INFO    0
 #define HALL_INFO   0
 #define TEN_INFO    0
+#define SHOOT_INFO  0
 #define TEN_LIGHT_INFO    1
 #define UART5_INFO  1
 #define AIMBOT_INFO 1
@@ -274,7 +275,7 @@ extern double integralBias[2];
 #define INTEGRAL_SET_ZERO   0
 #define KI_DIVIDE   2000
 //rs485
-#define USE_RELAY_CONTROL   0
+#define USE_RELAY_CONTROL   1
 #define READ_TENSION_RX_BUF_LENGTH  11
 #define READ_TENSION_T_TIMEOUT  9
 #define READ_TENSION_T_DELAY    9
@@ -324,13 +325,13 @@ extern double integralBias[2];
 #define START_LOAD_TIME2    (7*60-4*60)     //180开始拉
 #define START_SHOOT_TIME2    (7*60-4*60-7)  //173开始射
 #define STOP_SHOOT_TIME2    (7*60-4*60-27)  //153停止射
-#define LEAST_SHOOT_TIME     4             //当剩余发射时间小于等于x秒时，不再装填下一发
+#define LEAST_SHOOT_TIME     5             //当剩余发射时间小于等于x秒时，不再装填下一发
 
 //remote
 #define MANUAL_YAW  1
 #define USE_REMOTE  0
 #define AIMBOT_MODE 1  // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
-#define AIMBOT_DEBUG    0
+#define AIMBOT_DEBUG    1
 #define AIMBOT_SET_STEPPER3_ZERO_THRESOLD   300     //多少次丢目标后就停止yaw
 #define AIMBOT_KP   0.0004//0.09
 #define AIMBOT_KI   0.00009

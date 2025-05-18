@@ -115,8 +115,8 @@ void SystemClock_Config(void);
 #define SHOOT_BREAK  300         //100ms
 #define USE_game_progress_AND_stage_remain_time     0   //使用比赛剩余时间来触发飞镖
 #define USE_dart_remaining_time                     1   //使用己方飞镖发射剩余时间和闸门状态来发射飞镖
-#define START_TENSION_R   193//190
-#define START_TENSION_L   215//190
+#define START_TENSION_R   0//193//190
+#define START_TENSION_L   0//215//190
 
 //stepper
 #define STEPPER_PARAS_TEST  0
@@ -126,7 +126,7 @@ void SystemClock_Config(void);
 #define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
 #define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
 #define STEPPER2_VS_1   1.9
-#define STILL_RATE  1.9
+#define STILL_RATE  2
 #define STEPPER_CHANGE_TO_SMALL_K   14
 #define STEPPER1BIGKP 430
 #define STEPPER1BIGKD 150
@@ -217,7 +217,7 @@ void SystemClock_Config(void);
 #define AIMBOT_INFO 1
 #define STEPPER_INFO    0
 #define RS485_INFO  0
-#define RS485_LIGHT_INFO    0
+#define RS485_LIGHT_INFO    1
 #define SHOOT_INFO  1
 #define JUDGE_INFO  0
 #define JUDGE020A_HANDLED_INFO 1
@@ -268,13 +268,19 @@ extern double integralBias[2];
 #define STEPPER2_I   (double)(STEPPER2_VS_1 * (posKiStepper1 * integralBias[1]))
 #define STEPPER1_D   (double)(posKdStepper0 * ((double) tension1 - targetTen[0] - lastBias))
 #define STEPPER2_D   (double)(STEPPER2_VS_1 * posKdStepper1 * (targetTen[1] - (double) tensionLL - lastBias))
-#define INTEGRAL_BIAS_SUB   0.8
+#define INTEGRAL_BIAS_SUB   0//0.8
 #define INTEGRAL_START_BIAS 5
 #define INTEGRAL_MAX    0//50000//500
 #define INTEGRAL_SET_ZERO   0
 #define KI_DIVIDE   2000
 //rs485
-#define RS485_MUTATION_THRESHOLD    5
+#define USE_RELAY_CONTROL   0
+#define READ_TENSION_RX_BUF_LENGTH  11
+#define READ_TENSION_T_TIMEOUT  9
+#define READ_TENSION_T_DELAY    9
+#define READ_TENSION_R_TIMEOUT  100
+#define FIRST_TENSION_START_TIME_MS 20000   //开机后读拉力传感器的时间，后续就把传感器关闭
+#define RS485_MUTATION_THRESHOLD    3
 #define RS485_NORMAL    1
 #if RS485_NORMAL
 #define HRS485_1_USART  &huart2
@@ -324,7 +330,7 @@ extern double integralBias[2];
 #define MANUAL_YAW  1
 #define USE_REMOTE  0
 #define AIMBOT_MODE 1  // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
-#define AIMBOT_DEBUG    1
+#define AIMBOT_DEBUG    0
 #define AIMBOT_SET_STEPPER3_ZERO_THRESOLD   300     //多少次丢目标后就停止yaw
 #define AIMBOT_KP   0.0004//0.09
 #define AIMBOT_KI   0.00009
@@ -335,6 +341,7 @@ extern double integralBias[2];
 #define AIMBOT_PID  (AIMBOT_KP * ((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float)yaw_error - targetYawPul - lastYawError))
 //#define AIMBOT_PID  (AIMBOT_KP * ((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float)yaw_error - targetYawPul - lastYawError))
 #define AIMBOT_CONTROL_DELAY    5000
+#define SHOOT_YAW_THRESOLD 15
 #define INTEGRAL_YAW_START_BIAS 200
 #define INTEGRAL_YAW_BIAS_SUB   0
 #define INTEGRAL_YAW_MAX        0//100000

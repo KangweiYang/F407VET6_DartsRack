@@ -291,19 +291,25 @@ void UserInit(void) {
     HAL_UART_Receive_DMA(&huart6, USART6RxBuf, RX6_BUFF_LENGTH); //judge system uart
 //    RemoteInit();
 
-    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+#if USE_RELAY_CONTROL
+    HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+#endif
 
 }
 
 void ShootFirstDart(){
+#if USE_RELAY_CONTROL
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+#endif
     stepper0Flag = 0;
     stepper1Flag = 0;
     targetTen[0] = furTarTen[0];
     targetTen[1] = furTarTen[0];
     targetYawPul = furTarYaw[0];
     DartReset();
+#if USE_RELAY_CONTROL
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+#endif
     DartLoad(LOAD_SPEED, 0);
     DartRelease(0);
     tensionControlFlag = 1;
@@ -319,11 +325,11 @@ void ShootFirstDart(){
             prevTenL[i] = tensionL;
             tensionL = RS485_2_GetTension();
             if(tension1 == 0){
-                HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
-                HAL_Delay(500);
-                printf("Tension error:RELAY_REOPEN\n");
-                HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
-                HAL_Delay(1000);
+//                HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+//                HAL_Delay(500);
+//                printf("Tension error:RELAY_REOPEN\n");
+//                HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+//                HAL_Delay(1000);
             }
             i++;
             if(i >= WAIT_TIMES) i = 0;
@@ -344,18 +350,24 @@ void ShootFirstDart(){
     stepper0Flag = 0;
     stepper1Flag = 0;
     DartShoot(0);
+#if USE_RELAY_CONTROL
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+#endif
     HAL_Delay(500);
 }
 void ShootOneDart(int dartSerial) {
+#if USE_RELAY_CONTROL
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+#endif
     stepper0Flag = 0;
     stepper1Flag = 0;
     targetTen[0] = furTarTen[dartSerial - 1];
     targetTen[1] = furTarTen[dartSerial - 1];
     if(dartSerial == 1) targetYawPul = furTarYaw[0];
     else    targetYawPul = furTarYaw[dartSerial - 1];
+#if USE_RELAY_CONTROL
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+#endif
     DartLoad(LOAD_SPEED, dartSerial);
     DartRelease(dartSerial);
     tensionControlFlag = 1;
@@ -375,18 +387,44 @@ void ShootOneDart(int dartSerial) {
                || ((dart_remaining_time == 0
                || dart_launch_opening_status != OPEN
                || game_progress != IN_GAME
-               || dart_target == 0) && shootFlag != 5)) {
+               || dart_target == 0) && shootFlag != 5)
+               || (yaw_error - (float)targetYawPul) >= SHOOT_YAW_THRESOLD || (yaw_error - (float)targetYawPul) <= -SHOOT_YAW_THRESOLD) {
+                printf("循环继续原因：");
+                if (tension1 != targetTen[0])           printf(" tension1未达目标");
+                if (tensionL != targetTen[1])           printf(" tensionL未达目标");
+                if (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
+                    printf(" prevTen1历史不一致");
+                if (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)
+                    printf(" prevTenL历史不一致");
+                if ((dart_remaining_time == 0
+                     || dart_launch_opening_status != OPEN
+                     || game_progress != IN_GAME
+                     || dart_target == 0) && shootFlag != 5)
+                    printf(" 发射条件未就绪");
+                if ((yaw_error - (float)targetYawPul) >= SHOOT_YAW_THRESOLD ||
+                    (yaw_error - (float)targetYawPul) <= -SHOOT_YAW_THRESOLD)
+                    printf(" 偏航误差超阈值");
+                printf("\n");
 #else
         while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
             || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
             || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)) {
 #endif
+                printf("yaw_error = %f, targetYawPul = %d, shootFlag = %d\n", yaw_error, targetYawPul, shootFlag);
+            shooting = 0;
             stepper0Flag = 1;
             stepper1Flag = 1;
             prevTen1[i] = tension1;
             tension1 = RS485_1_GetTension();
             prevTenL[i] = tensionL;
             tensionL = RS485_2_GetTension();
+                if(tension1 == 0 || tensionL == 0){
+                    if(tension1 == 0)   stepper0Flag = 0;
+                    else stepper0Flag = 1;
+                    if(tensionL == 0)   stepper1Flag = 0;
+                    else stepper1Flag = 1;
+                    printf("tension ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! R:%d, L:%d\n\n\n", tension1, tensionL);
+                }
             i++;
             if(i >= WAIT_TIMES) i = 0;
             /*
@@ -402,13 +440,16 @@ void ShootOneDart(int dartSerial) {
              */
         }
     }
+    shooting = 1;
     tensionControlFlag = 0;
     stepper0Flag = 0;
     stepper1Flag = 0;
     StepperSetSpeed(STEPPER1, 0);
     StepperSetSpeed(STEPPER2, 0);
     DartShoot(dartSerial);
+#if USE_RELAY_CONTROL
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+#endif
     HAL_Delay(500);
 }
 
@@ -599,6 +640,16 @@ int main(void) {
       }
       if(lastDart_launch_opening_status != dart_launch_opening_status)  lastDart_launch_opening_status = dart_launch_opening_status;
 #endif
+      static int startFlag;
+      if(HAL_GetTick() >= FIRST_TENSION_START_TIME_MS && startFlag == 0){
+          printf("Tick = %ld\n", HAL_GetTick());
+#if USE_RELAY_CONTROL
+          HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+#endif
+          tension1 = 0;
+          tensionL = 0;
+          startFlag = 1;
+      }
         if(tension1SetZeroFlag){
             RS485_1_SetTensionZero();
             tension1SetZeroFlag = 0;
@@ -610,8 +661,10 @@ int main(void) {
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
         static int32_t lastTension1, lastTensionL;
-        if(stepper0Flag == 1 && tension1 == targetTen[0] && tensionL == targetTen[1] && lastTension1 == targetTen[0] && lastTensionL == targetTen[1]){
+        if(stepper0Flag == 1 && tension1 == targetTen[0] && tensionL == targetTen[1]){
+#if USE_RELAY_CONTROL
             HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+#endif
             stepper0Flag = 0;
             stepper1Flag = 0;
         }
@@ -718,8 +771,8 @@ double stepper_Kp[90] = {
         70,66,70,65,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
-        60,56,46,45,44,39,37, 36,35, 32,            // 425-465
-        30,27,26,25,24,23,23,21,20,16,            // 475-515
+        60,56,46,45,44,39,28, 24,22, 20,            // 425-465
+        19,18,17,16,24,23,23,21,20,16,            // 475-515
 
         // 520-580指数衰减（40→24）
         13,12,12,29,28,27,26,25,24,23,            // 525-575
@@ -1273,11 +1326,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 #endif
 #if RS485_LIGHT_INFO
             printf("tension1DataAddress: %d, rs485_1:", ex_tension1DataAddress);
-            for (int i = 0; i < 11; ++i)
+            for (int i = 0; i < READ_TENSION_RX_BUF_LENGTH; ++i)
                 printf("%x,", ex_rs4851data[i]);
             printf("\n");
             printf("tension2DataAddress: %d, rs485_2:", ex_tension2DataAddress);
-            for (int i = 0; i < 11; ++i)
+            for (int i = 0; i < READ_TENSION_RX_BUF_LENGTH; ++i)
                 printf("%x,", ex_rs4852data[i]);
             printf("\n");
 #endif
@@ -1457,7 +1510,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                         break;
                 }
             } else if (ContainsSubString(rxHandleBuf + 1, SetTen)) {
+#if USE_RELAY_CONTROL
                 HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+#endif
                 contFromLastUart = 1;
                 shootFlag = 0;
                 switch (rxHandleBuf[8]) {
@@ -1499,7 +1554,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 printf("TestShoot %d\n", cout1);
                 shootFlag = 5;
                 DartFeedStartUp();
+#if USE_RELAY_CONTROL
                 HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+#endif
             } else if (ContainsSubString(rxHandleBuf, AbortShoot)) {
                 static int cout2;
                 cout2++;
@@ -1508,7 +1565,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 shootFlag = 0;
                 targetTen[0] = furTarTen[4];
                 targetTen[1] = furTarTen[4];
+#if USE_RELAY_CONTROL
                 HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+#endif
                 stepper1Flag = 1;
                 stepper0Flag = 1;
             } else if (ContainsSubString(rxHandleBuf, SetCurYawToZero)) {

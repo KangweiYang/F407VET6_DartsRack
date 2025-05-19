@@ -213,6 +213,7 @@ void SystemClock_Config(void);
 #define HALL_INFO   0
 #define TEN_INFO    0
 #define SHOOT_INFO  0
+#define CAN_SHOOT_INFO  1
 #define TEN_LIGHT_INFO    1
 #define UART5_INFO  1
 #define AIMBOT_INFO 1

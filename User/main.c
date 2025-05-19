@@ -118,6 +118,7 @@ enum SILO_GATE
 {
     OPEN = 0, CLOSE, MOVING
 }dart_launch_opening_status;
+enum SILO_GATE lastDart_launch_opening_status;
 uint16_t target_change_time = 0;
 uint16_t latest_launch_cmd_time = 0;
 uint16_t dart_remaining_time = 0;
@@ -633,13 +634,14 @@ int main(void) {
           canShootFlag = 0;
       }
 #elif USE_dart_remaining_time
-      static uint16_t lastDart_launch_opening_status;
       if(game_progress == IN_GAME && dart_target != 0 && (dart_remaining_time > 0 || (lastDart_launch_opening_status == 1 && dart_launch_opening_status == 2))){
           canShootFlag = 1;
+          printf("set canShootFlag = %d!!!!!!!!\n\n", canShootFlag);
           if(shootFlag == 0) shootFlag = 1;
       }
-      else if((dart_remaining_time <= LEAST_SHOOT_TIME && shootFlag > 0) || (lastDart_launch_opening_status == 0 && dart_launch_opening_status == 2)){
+      else if(canShootFlag == 1 && (dart_remaining_time <= LEAST_SHOOT_TIME && dart_launch_opening_status == 0) || (lastDart_launch_opening_status == 0 && dart_launch_opening_status == 2)){
           canShootFlag = 0;
+          printf("set canShootFlag = %d!!!!!!!!\n\n", canShootFlag);
       }
       if(lastDart_launch_opening_status != dart_launch_opening_status)  lastDart_launch_opening_status = dart_launch_opening_status;
 #endif
@@ -683,7 +685,7 @@ int main(void) {
             HAL_Delay(1000);
             shootFlag = 0;
         }
-        if (canShootFlag && furTarTen[1] != 0 && shootFlag <= 4 && shootFlag > 1){
+        if (canShootFlag && shootFlag <= 4 && shootFlag >= 1 && furTarTen[shootFlag - 1] != 0){
             printf("shootFlag: %d\n", shootFlag);
             ShootOneDart(shootFlag);
 //            HAL_Delay(1000);
@@ -699,17 +701,15 @@ int main(void) {
 #endif
             } else{
                 shootFlag++;
-                if(furTarTen[shootFlag - 1] == 0)   canShootFlag = 0;
             }
         }
-        if (canShootFlag && furTarTen[1] != 0 && shootFlag == 1) {
-            printf("shootFlag: %d\n", 1);
-//            ShootFirstDart();               //这里会让测力离线
-            ShootOneDart(shootFlag);
-            shootFlag++;
-            if(targetTen[shootFlag - 1] == 0)   canShootFlag = 0;
-//            HAL_Delay(1000);
-        }
+//        if (canShootFlag && furTarTen[0] != 0 && shootFlag == 1) {
+//            printf("shootFlag: %d\n", 1);
+////            ShootFirstDart();               //这里会让测力离线
+//            ShootOneDart(shootFlag);
+//            shootFlag++;
+////            HAL_Delay(1000);
+//        }
     }
     /* USER CODE BEGIN 3 */
 }
@@ -1322,6 +1322,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //                   HAL_GPIO_ReadPin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin));
             printf("FSM: %d, contFromLastUart: %lld\n", FeedFSMState(), contFromLastUart);
 #endif
+#if CAN_SHOOT_INFO
+            printf("can_shoot_flag = %d, shootFlag = %d, furTarTen[%d - 1] = %d, game_progress = %d, dart_target = %d, dart_remaining_time = %d, lastDart_launch_opening_status = %d, dart_launch_opening_status = %d\n", canShootFlag, shootFlag, shootFlag, furTarTen[shootFlag - 1], game_progress, dart_target, dart_remaining_time, lastDart_launch_opening_status, dart_launch_opening_status);
+
+#endif
 #if TEN_LIGHT_INFO
             printf("curTen: R: %ld, L: %ld\n", tension1, tensionL);
 #endif
@@ -1607,18 +1611,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                     trig = 1;
 //                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_UP, 0);
 //                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_UP, 0);
-//                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_RESET, 0);
+                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_RESET, 0);
 //                    ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 0);
-                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_RIGHT, 0);
+//                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_RIGHT, 0);
                     printf("RESET TRIGGE, init grasp, SERVO_LEFT_RIGHT_RIGHT, SERVO_UP_DOWN_LEFT_UP, SERVO_UP_DOWN_RIGHT_UP\n");
                     servoTriggerCont = 0;
                 } else if(trig == 1){
                     trig = 0;
 //                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_DOWN, 0);
 //                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_DOWN, 0);
-//                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_SHOOT, 0);
+                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_SHOOT, 0);
 //                    ServoSet(SERVO_GRASP, SERVO_GRASP_GRASP, 0);
-                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_LEFT, 0);
+//                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_LEFT, 0);
                     printf("SHOT TRIGGE, grasp grasp, SERVO_LEFT_RIGHT_LEFT, SERVO_UP_DOWN_LEFT_DOWN, SERVO_UP_DOWN_RIGHT_DOWN\n");
                     servoTriggerCont = 0;
                 }

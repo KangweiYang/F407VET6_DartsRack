@@ -250,7 +250,7 @@ void SystemClock_Config(void);
 //stepper1,2 dir
 
 #define STEPPER1_MAX_PUL  1900
-#define STEPPER2_MAX_PUL  4000
+#define STEPPER2_MAX_PUL  3700
 #define STEPPER1_2_MIN_CHANGE   (1200 / 20)
 
 #define STEPPER1_2_DIR  -1
@@ -302,9 +302,10 @@ extern double integralBias[2];
 #define LOAD_DELAY  50//100
 #define AFTER_LOAD_DELAY  200
 #define RELEASE_SPEED   -4600//-3000
-#define RELEASE_OK_DELAY   100//-3000
+#define RELEASE_OK_DELAY   300//-3000
 #define ERROR_LOAD_SPEED   2000
 #define RELEASE_DELAY_TENION_CONTROL    1100    //释放后相隔多少ms后开始拉力闭环控制
+#define TENSION_LOW_ERROR_THRESOLD  100     //断弦后避免拉弦
 #define SHOOT_SPEED -3000
 #define WAIT_TIMES  2           //当连续出现几次目标拉力值时发射
 #define LOAD_BACK_TIME_100MS    1       //2是100ms，1是不后退
@@ -332,7 +333,7 @@ extern double integralBias[2];
 #define MANUAL_YAW  1
 #define USE_REMOTE  0
 #define AIMBOT_MODE 1  // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
-#define AIMBOT_DEBUG    1
+#define AIMBOT_DEBUG    0
 #define AIMBOT_SET_STEPPER3_ZERO_THRESOLD   300     //多少次丢目标后就停止yaw
 #define AIMBOT_KP   0.0004//0.09
 #define AIMBOT_KI   0.00009

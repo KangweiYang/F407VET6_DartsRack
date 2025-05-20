@@ -49,7 +49,7 @@ int sonicRangeUpCloseFlag = 1, sonicRangeDownOpenFlag = 0, canShootFlag = 0;
 
 int PWMtest = 75;
 double posKp = 0.15, posKi = 0.00, posKd = 1;
-double velKp = 150, velKi = 10;
+double velKp = 150, velKi = 9.4;
 double posKpStepper0 = STEPPER1BIGKP, posKiStepper0 = 0.00, posKdStepper0 = STEPPER1BIGKD;
 double posKpStepper1 = STEPPER2BIGKP, posKiStepper1 = 0.00, posKdStepper1 = STEPPER2BIGKD;
 double velKpStepper = 0, velKiStepper = 10000;
@@ -416,6 +416,12 @@ void ShootOneDart(int dartSerial) {
 #endif
 //                printf("yaw_error = %f, targetYawPul = %d, shootFlag = %d\n", yaw_error, targetYawPul, shootFlag);
             shooting = 0;
+            if(tension1 <= TENSION_LOW_ERROR_THRESOLD && tensionL <= TENSION_LOW_ERROR_THRESOLD){
+                printf("TENISON TOO LOW!!!!!!!!!!!!!!! R:%d, L:%d\n\n\n", tension1, tensionL);
+                stepper0Flag = 0;
+                stepper1Flag = 0;
+                continue;
+            }
             stepper0Flag = 1;
             stepper1Flag = 1;
             prevTen1[i] = tension1;
@@ -666,7 +672,7 @@ int main(void) {
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
         static int32_t lastTension1, lastTensionL;
-        if(stepper0Flag == 1 && tension1 == targetTen[0] && tensionL == targetTen[1]){
+        if(stepper0Flag == 1 && tensionL == targetTen[1]){
 #if USE_RELAY_CONTROL
             HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
 #endif
@@ -762,7 +768,7 @@ int StrToInt(uint8_t *buf, int16_t startPointer, uint8_t endChar){
 //int IndexOf(uint8_t *buf, uint8_t )
 
 
-double stepper_Kp[90] = {
+double stepper_Kp0[90] = {
         // 0-160线性保持（0-160实际为430）
         430,430,430,430,430,430,430,430,430,430,  // 5-95
         430,430,330,230,180,140,130,              // 105-155
@@ -776,7 +782,37 @@ double stepper_Kp[90] = {
         70,66,70,65,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
-        60,38,34,30,28,26,25, 24,22, 20,            // 425-465
+        60,38,34,28,26,25,24, 19,18, 17,            // 425-465
+        16,16,15,15,15,15,14,14,13,13,            // 475-515
+
+        // 520-580指数衰减（40→24）
+        13,12,12,11,11,11,10,10,10,10,            // 525-575
+
+        // 580-700对数保持（24）
+        19.5,19,18.5,18,17.5,17,16.5,16,15.5,15,            // 585-675
+        14.6,14.2,                                     // 685-695
+
+        // 700-900反比例衰减（12→12）
+        13.9,13.6,13.4,13.2,13,12.7,12,12,12,12,            // 705-795
+        12,12,12,12,12,12,12,12,12,12             // 805-895
+};
+
+
+double stepper_Kp1[90] = {
+        // 0-160线性保持（0-160实际为430）
+        430,430,430,430,430,430,430,430,430,430,  // 5-95
+        430,430,330,230,180,140,130,              // 105-155
+
+        // 160-170突变区
+        150,                                       // 165
+
+        // 170-420线性下降（170→120）
+        150,110,140,158,154,150,146,142,138,134,  // 175-265
+        130,126,122,118,114,110,106,102,98,84,    // 275-365
+        70,66,70,65,                              // 375-405
+
+        // 420-520二次曲线下降（80→40）
+        60,38,34,28,26,25,25, 22,21, 20,            // 425-465
         19,18,17,16,15,15,14,14,13,13,            // 475-515
 
         // 520-580指数衰减（40→24）
@@ -1088,8 +1124,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 if(integralBias[0] >= -INTEGRAL_SET_ZERO && integralBias[0] <= INTEGRAL_SET_ZERO) integralBias[0] = 0;
 
                 if(((double) tension1 - targetTen[0]) <= STEPPER_CHANGE_TO_SMALL_K && ((double) tension1 - targetTen[0]) >= -STEPPER_CHANGE_TO_SMALL_K){
-                    posKpStepper0 = stepper_Kp[(int)targetTen[0] / 10];
-                    posKiStepper0 = stepper_Kp[(int)targetTen[0] / 10] / KI_DIVIDE;
+                    posKpStepper0 = stepper_Kp0[(int)targetTen[0] / 10];
+                    posKiStepper0 = stepper_Kp0[(int)targetTen[0] / 10] / KI_DIVIDE;
                     posKdStepper0 = stepper_Kd[(int)targetTen[0] / 10];
                     if(targetTen[0] >= STEPPER_NOR_SQ_TEN_THRESOLD){
                         if((tension1 - targetTen[0]) == 1 || (tension1 - targetTen[0]) == -1){
@@ -1147,8 +1183,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 if(integralBias[1] >= -INTEGRAL_SET_ZERO && integralBias[1] <= INTEGRAL_SET_ZERO) integralBias[1] = 0;
 
                 if((targetTen[1] - (double) tensionLL) <= STEPPER_CHANGE_TO_SMALL_K && (targetTen[1] - (double) tensionLL) >= -STEPPER_CHANGE_TO_SMALL_K){
-                    posKpStepper1 = stepper_Kp[(int)targetTen[1] / 10];
-                    posKiStepper1 = stepper_Kp[(int)targetTen[1] / 10] / KI_DIVIDE;
+                    posKpStepper1 = stepper_Kp1[(int)targetTen[1] / 10];
+                    posKiStepper1 = stepper_Kp1[(int)targetTen[1] / 10] / KI_DIVIDE;
                     posKdStepper1 = stepper_Kd[(int)targetTen[1] / 10];
                     if(targetTen[1] >= STEPPER_NOR_SQ_TEN_THRESOLD){
                         if((targetTen[1] - tensionLL) == 1 || (targetTen[1] - tensionLL) == -1){

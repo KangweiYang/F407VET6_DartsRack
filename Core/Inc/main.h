@@ -219,8 +219,8 @@ void SystemClock_Config(void);
 #define AIMBOT_INFO 1
 #define STEPPER_INFO    0
 #define RS485_INFO  0
-#define RS485_LIGHT_INFO    1
-#define SHOOT_INFO  1
+#define RS485_LIGHT_INFO    0
+#define SHOOT_INFO  0
 #define JUDGE_INFO  0
 #define JUDGE020A_HANDLED_INFO 1
 #define JUDGE0105_HANDLED_INFO 1

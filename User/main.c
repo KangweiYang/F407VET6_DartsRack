@@ -102,7 +102,7 @@ int tension1SetZeroFlag = 0, tension2SetZeroFlag = 0;
 
 int16_t RxPointer = 0, Rx6Pointer = 0;
 extern int backCont;
-extern uint8_t _rx_buf[18];
+extern uint8_t _rx_buf[AIMBOT_RX_BUF_LEN];
 
 int servoTriggerCont = 0;
 
@@ -420,6 +420,10 @@ void ShootOneDart(int dartSerial) {
                 printf("TENISON TOO LOW!!!!!!!!!!!!!!! R:%d, L:%d\n\n\n", tension1, tensionL);
                 stepper0Flag = 0;
                 stepper1Flag = 0;
+                prevTen1[i] = tension1;
+                tension1 = RS485_1_GetTension();
+                prevTenL[i] = tensionL;
+                tensionL = RS485_2_GetTension();
                 continue;
             }
             stepper0Flag = 1;
@@ -460,7 +464,7 @@ void ShootOneDart(int dartSerial) {
 #if USE_RELAY_CONTROL
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
 #endif
-//    HAL_Delay(500);
+    HAL_Delay(500);
 }
 
 /**
@@ -640,7 +644,7 @@ int main(void) {
           canShootFlag = 0;
       }
 #elif USE_dart_remaining_time
-      if(game_progress == IN_GAME && dart_target != 0 && (dart_remaining_time > 0 || (lastDart_launch_opening_status == 1 && dart_launch_opening_status == 2))){
+      if(canShootFlag == 0 && game_progress == IN_GAME && dart_target != 0 && (dart_remaining_time > 0 || (lastDart_launch_opening_status == 1 && dart_launch_opening_status == 2))){
           canShootFlag = 1;
           printf("set canShootFlag = %d!!!!!!!!\n\n", canShootFlag);
           if(shootFlag == 0) shootFlag = 1;
@@ -697,6 +701,7 @@ int main(void) {
 //            HAL_Delay(1000);
             if(shootFlag == TOTAL_DART_NUM)  {
                 if(game_progress != IN_GAME && game_type != 1)  shootFlag = 0;
+                else    shootFlag = -1;                     //防止最后再发一发
                 canShootFlag = 0;
                 DartFeedStartDown();
                 StepperStart(STEPPER4);
@@ -709,13 +714,13 @@ int main(void) {
                 shootFlag++;
             }
         }
-//        if (canShootFlag && furTarTen[0] != 0 && shootFlag == 1) {
-//            printf("shootFlag: %d\n", 1);
-////            ShootFirstDart();               //这里会让测力离线
-//            ShootOneDart(shootFlag);
-//            shootFlag++;
-////            HAL_Delay(1000);
-//        }
+        if (canShootFlag && furTarTen[0] != 0 && shootFlag == 1) {
+            printf("shootFlag: %d\n", 1);
+//            ShootFirstDart();               //这里会让测力离线
+            ShootOneDart(shootFlag);
+            shootFlag++;
+//            HAL_Delay(1000);
+        }
     }
     /* USER CODE BEGIN 3 */
 }
@@ -782,8 +787,8 @@ double stepper_Kp0[90] = {
         70,66,70,65,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
-        60,56,46,45,44,39,37, 36,35, 34,            // 425-465
-        33,27,26,25,24,23,27,27,26,25,            // 475-515
+        60,56,46,45,44,39,37, 36,32, 30,            // 425-465
+        30,27,26,25,24,23,27,27,26,25,            // 475-515
 
         // 520-580指数衰减（40→24）
         29,28,27,29,28,27,26,25,24,23,            // 525-575
@@ -1104,7 +1109,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             if (cont == 10) {                           //10ms
             static double integralBias[2];
                 //AIMBOT UART
-                HAL_UART_Receive_DMA(&huart5, _rx_buf, 18);
+                HAL_UART_Receive_DMA(&huart5, _rx_buf, AIMBOT_RX_BUF_LEN);
                 CarData *car_data;
                 CarDataHandle(&car_data, 1, 1);
                 AimbotSendData(&car_data, 8);
@@ -1250,44 +1255,48 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 #if AIMBOT_MODE
 // 在数据接收后的处理逻辑中：
-        if (_rx_buf[0] == 0xA5) {
-            // 提取 yaw_error（大端转小端）
-            uint8_t *yaw_ptr = &_rx_buf[2];  // 原数据：0x90,0xA0,0x2A,0xC4（大端）
+        int not_detect_cont = 0;
+        for (int i = 0; i < AIMBOT_RX_BUF_LEN - 9; ++i) {
+            if (_rx_buf[0] == 0xA5) {
+                // 提取 yaw_error（大端转小端）
+                uint8_t *yaw_ptr = &_rx_buf[2];  // 原数据：0x90,0xA0,0x2A,0xC4（大端）
 
-            // 手动反转字节序（大端 -> 小端）
-            union {
-                uint32_t u;
-                float f;
-            } yaw_convert;
+                // 手动反转字节序（大端 -> 小端）
+                union {
+                    uint32_t u;
+                    float f;
+                } yaw_convert;
 
-            // 将反转后的字节按大端序组合成uint32
-            yaw_convert.u = (yaw_ptr[3] << 24) |  // 原第4字节（0xC4）移到最高位
-                            (yaw_ptr[2] << 16) |  // 原第3字节（0x2A）
-                            (yaw_ptr[1] << 8)  |  // 原第2字节（0xA0）
-                            yaw_ptr[0];          // 原第1字节（0x90）在最低位
+                // 将反转后的字节按大端序组合成uint32
+                yaw_convert.u = (yaw_ptr[3] << 24) |  // 原第4字节（0xC4）移到最高位
+                                (yaw_ptr[2] << 16) |  // 原第3字节（0x2A）
+                                (yaw_ptr[1] << 8) |  // 原第2字节（0xA0）
+                                yaw_ptr[0];          // 原第1字节（0x90）在最低位
 
-            yaw_error = yaw_convert.f;     // 通过联合体转为float
+                yaw_error = yaw_convert.f;     // 通过联合体转为float
 
-            // 打印调试信息
+                // 打印调试信息
 //                printf("yaw_bytes: %02X %02X %02X %02X\n",
 //                       yaw_ptr[3], yaw_ptr[2], yaw_ptr[1], yaw_ptr[0]);
 //                printf("yaw_uint: %08lX\n", (uint32_t)yaw_convert.u);
 
-            // 提取 target_status
-            target_status = _rx_buf[6];
+                // 提取 target_status
+                target_status = _rx_buf[6];
 
 //            printf("yaw_error = %f\n", yaw_error);
 //            printf("target_status = %d\n", target_status);
 
-            for (int i = 0; i < 18; ++i){
-                _rx_buf[i] = '\0';
+                for (int i = 0; i < 18; ++i) {
+                    _rx_buf[i] = '\0';
+                }
+            } else {
+                not_detect_cont ++;
+
+//            printf("yaw_error = %f\n", yaw_error);
+//            printf("target_status = %d\n", target_status);
             }
-        } else {
-            target_status = 0;
-
-//            printf("yaw_error = %f\n", yaw_error);
-//            printf("target_status = %d\n", target_status);
         }
+        if(not_detect_cont >= AIMBOT_RX_BUF_LEN - 9)    target_status = 0;
 //            PrintCarData(&car_data);
 #endif
     }
@@ -1378,10 +1387,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             printf("\n");
 #endif
 #if UART5_INFO
-//            for (int i = 0; i < 18; ++i){
-//                printf("%x, ",_rx_buf[i]);
-//            }
+            for (int i = 0; i < 18; ++i){
+                printf("%x, ",_rx_buf[i]);
+            }
+            printf("\n");
+#endif
 
+#if UART5_HADDLE_INFO
             printf("yaw_error = %f, tarYawPul = %d\n", yaw_error, targetYawPul);
             printf("target_status = %d\n", target_status);
 #endif

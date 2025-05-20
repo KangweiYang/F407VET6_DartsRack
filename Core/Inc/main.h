@@ -216,7 +216,8 @@ void SystemClock_Config(void);
 #define CAN_SHOOT_INFO  1
 #define TEN_LIGHT_INFO    1
 #define UART5_INFO  1
-#define AIMBOT_INFO 1
+#define UART5_HADDLE_INFO  1
+#define AIMBOT_INFO 0
 #define STEPPER_INFO    0
 #define RS485_INFO  0
 #define RS485_LIGHT_INFO    0
@@ -299,7 +300,7 @@ extern double integralBias[2];
 //shoot progress
 #define RESET_SPEED 700
 #define LOAD_SPEED  4500//3400
-#define LOAD_DELAY  50//100
+#define LOAD_DELAY  0//50//100
 #define AFTER_LOAD_DELAY  200
 #define RELEASE_SPEED   -4600//-3000
 #define RELEASE_OK_DELAY   300//-3000
@@ -332,6 +333,7 @@ extern double integralBias[2];
 //remote
 #define MANUAL_YAW  1
 #define USE_REMOTE  0
+#define AIMBOT_RX_BUF_LEN   18
 #define AIMBOT_MODE 1  // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
 #define AIMBOT_DEBUG    0
 #define AIMBOT_SET_STEPPER3_ZERO_THRESOLD   300     //多少次丢目标后就停止yaw

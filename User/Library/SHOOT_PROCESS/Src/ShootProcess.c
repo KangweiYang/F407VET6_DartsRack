@@ -216,13 +216,17 @@ void DartReset(void){
 extern int servoTriggerCont;
 void TriggerReset(void){
     ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_RESET, 0);
+#if SHOOT_INFO
     printf("RESET TRIGGE\n");
+#endif
     servoTriggerCont = 0;
 }
 
 void TriggerShoot(void){
     ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_SHOOT, 0);
+#if SHOOT_INFO
     printf("SHOOT TRIGGE\n");
+#endif
     servoTriggerCont = 0;
 }
 

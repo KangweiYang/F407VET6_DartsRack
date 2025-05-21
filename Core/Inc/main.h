@@ -110,6 +110,7 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN Private defines */
 
+#define RESET_BY_REMAIN_TIME   0
 #define TOTAL_DART_NUM  4
 #define CONT_TO_READY_TO_SHOOT  10         //100ms
 #define SHOOT_BREAK  300         //100ms
@@ -213,7 +214,7 @@ void SystemClock_Config(void);
 #define HALL_INFO   0
 #define TEN_INFO    0
 #define SHOOT_INFO  0
-#define CAN_SHOOT_INFO  1
+#define CAN_SHOOT_INFO  0
 #define TEN_LIGHT_INFO    1
 #define UART5_INFO  1
 #define UART5_HADDLE_INFO  1
@@ -226,9 +227,9 @@ void SystemClock_Config(void);
 #define JUDGE020A_HANDLED_INFO 1
 #define JUDGE0105_HANDLED_INFO 1
 #define JUDGE0001_HANDLED_INFO 1
-#define JUDGE020A_RAW_INFO 1
-#define JUDGE0105_RAW_INFO 1
-#define JUDGE0001_RAW_INFO 1
+#define JUDGE020A_RAW_INFO 0
+#define JUDGE0105_RAW_INFO 0
+#define JUDGE0001_RAW_INFO 0
 #else
 #define CAN_INFO    0
 #define MOTOR_INFO  0

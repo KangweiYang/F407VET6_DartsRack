@@ -49,7 +49,7 @@ int sonicRangeUpCloseFlag = 1, sonicRangeDownOpenFlag = 0, canShootFlag = 0;
 
 int PWMtest = 75;
 double posKp = 0.15, posKi = 0.00, posKd = 1;
-double velKp = 150, velKi = 9.4;
+double velKp = 100, velKi = 9.4;
 double posKpStepper0 = STEPPER1BIGKP, posKiStepper0 = 0.00, posKdStepper0 = STEPPER1BIGKD;
 double posKpStepper1 = STEPPER2BIGKP, posKiStepper1 = 0.00, posKdStepper1 = STEPPER2BIGKD;
 double velKpStepper = 0, velKiStepper = 10000;
@@ -632,6 +632,11 @@ int main(void) {
 //    motor2Flag = 0;
 //    motor3Flag = 0;
     while(1) {
+
+#if RESET_BY_REMAIN_TIME
+        if(stage_remain_time == RESET_BY_REMAIN_TIME) {HAL_NVIC_SystemReset();}
+#endif
+
 #if USE_game_progress_AND_stage_remain_time
       if(game_progress == 4 && stage_remain_time <= START_LOAD_TIME1 && stage_remain_time >= STOP_SHOOT_TIME1 && shootFlag <= 2){
           canShootFlag = 1;
@@ -644,12 +649,12 @@ int main(void) {
           canShootFlag = 0;
       }
 #elif USE_dart_remaining_time
-      if(canShootFlag == 0 && game_progress == IN_GAME && dart_target != 0 && (dart_remaining_time > 0 || (lastDart_launch_opening_status == 1 && dart_launch_opening_status == 2))){
+      if(canShootFlag == 0 && game_progress == IN_GAME && dart_target != 0 && ((dart_remaining_time >= LEAST_SHOOT_TIME && dart_remaining_time > 0) || (lastDart_launch_opening_status == 1 && dart_launch_opening_status == 2))){
           canShootFlag = 1;
           printf("set canShootFlag = %d!!!!!!!!\n\n", canShootFlag);
           if(shootFlag == 0) shootFlag = 1;
       }
-      else if(canShootFlag == 1 && (dart_remaining_time <= LEAST_SHOOT_TIME && dart_launch_opening_status == 0) || (lastDart_launch_opening_status == 0 && dart_launch_opening_status == 2)){
+      if(canShootFlag == 1 && ((dart_remaining_time < LEAST_SHOOT_TIME && dart_launch_opening_status == 0) || (lastDart_launch_opening_status == 0 && dart_launch_opening_status == 2))){
           canShootFlag = 0;
           printf("set canShootFlag = %d!!!!!!!!\n\n", canShootFlag);
       }
@@ -873,8 +878,8 @@ double stepper_Kd[90] = {
         70,69,68,67,
 
         // 420-520阻尼回升（80→90）
-        66,67,68,69,70,71,72,73,74,75,
-        76,77,78,79,80,81,82,83,84,85,
+        66,67,90,90,90,90,90,90,90,90,
+        89,88,87,86,85,84,83,82,81,84,
 
         // 520-580过阻尼抑制（90→70）
         84,82,80,78,76,74,72,70,70,70,

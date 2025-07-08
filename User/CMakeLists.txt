@@ -20,7 +20,6 @@ target_link_libraries(${PROJECT_NAME}.elf
         stepper
         shoot_process
         remote
-        referee
         )
 
 set(HEX_FILE ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.hex)

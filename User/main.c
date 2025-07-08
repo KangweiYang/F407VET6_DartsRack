@@ -163,11 +163,11 @@ int ContainsAndCopy(uint8_t *buf, int16_t *startPointer, uint8_t byteToFind, uin
  * @retval   1               如果找到指定字节序列，返回1
  * @retval   0               如果未找到指定字节序列，返回0
  */
-int ContainsBytesAndCopy(uint8_t *buf, int16_t *startPointer, uint8_t *bytesToFind, uint16_t length, uint8_t *copyBuf){
-//    if(*startPointer > RX6_BUFF_LENGTH)
+int ContainsBytesAndCopy(uint8_t *buf, int16_t *startPointer, uint8_t *bytesToFind, uint16_t length, uint8_t *copyBuf, int bagLen){
+    if(*startPointer >= RX6_BUFF_LENGTH)
         *startPointer = 0;
     for (int i = *startPointer; i < length && *startPointer <= RX6_BUFF_LENGTH; ++i){
-        if(buf[i] == bytesToFind[0] && buf[i + 5] == bytesToFind[5] && buf[i + 6] == bytesToFind[6]) {
+        if(buf[i] == bytesToFind[0] && buf[i + 5] == bytesToFind[5] && buf[i + 6] == bytesToFind[6] && buf[i + 1] == bagLen) {
             for (int j = 1; j < buf[i + 1] + 1; ++j) {
                 copyBuf[j] = buf[i + j + 6];
             }
@@ -1522,8 +1522,7 @@ if(aimbot_mode) {
 //            }
 #endif
             uint8_t rx6HandleBuf[RX6_BUFF_LENGTH];
-            if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart0001, RX6_BUFF_LENGTH, rx6HandleBuf)) {
-                if (rx6HandleBuf[0] == 0x0b) {
+            if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart0001, RX6_BUFF_LENGTH, rx6HandleBuf, 0x0b)) {
                     //没开赛时:rx6HandleBuf[] = b 51 0 0 0 0 0 0 0 0 0 0 , while the first 'b' = 11 is the length of rx6HandleBuf
                     //rx6HandleBuf[1]:
                     // bit 0-3:比赛类型
@@ -1554,10 +1553,8 @@ if(aimbot_mode) {
                     printf("stage_remain_time: %d\n", stage_remain_time);
                     printf("\n");
 #endif
-                }
             }
-            if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart0105, RX6_BUFF_LENGTH, rx6HandleBuf)) {
-                if (rx6HandleBuf[0] == 0x03) {
+            if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart0105, RX6_BUFF_LENGTH, rx6HandleBuf, 0x03)) {
                     //没开赛时:rx6HandleBuf[] = 3 0 0 0, while the first '3' is the length of rx6HandleBuf
                     //rx6HandleBuf[1]:  己方飞镖发射剩余时间，单位:秒
                     dart_remaining_time = rx6HandleBuf[1];
@@ -1574,10 +1571,8 @@ if(aimbot_mode) {
                     printf("\ndart_target: %d\n", dart_target);
                     printf("\n");
 #endif
-                }
             }
-            if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart020A, RX6_BUFF_LENGTH, rx6HandleBuf)) {
-                if (rx6HandleBuf[0] == 0x06) {
+            if (ContainsBytesAndCopy(USART6RxBuf, &Rx6Pointer, JudgeUart020A, RX6_BUFF_LENGTH, rx6HandleBuf, 0x06)) {
                     //没开赛时:rx6HandleBuf[] = 6 0 0 0 0 0 0, while the first '6' is the length of rx6HandleBuf
                     //rx6HandleBuf[1]:  1:关闭 2:正在开启或者关闭中 0:已经开启
                     dart_launch_opening_status = rx6HandleBuf[1];
@@ -1599,7 +1594,6 @@ if(aimbot_mode) {
                     printf("latest_launch_cmd_time: %d\n", latest_launch_cmd_time);
                     printf("\n");
 #endif
-                }
             }
         }
         if(resetFeedCont > 0)   resetFeedCont--;

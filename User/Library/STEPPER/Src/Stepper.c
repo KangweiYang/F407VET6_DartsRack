@@ -39,7 +39,9 @@ void StepperSetSpeed(TIM_HandleTypeDef *htim, uint32_t channel, int16_t frequenc
         if (htim == &htim1) HAL_GPIO_TogglePin(STEPPER1_DIR_GPIO_Port, STEPPER1_DIR_Pin);
         else if (htim == &htim3) HAL_GPIO_TogglePin(STEPPER2_DIR_GPIO_Port, STEPPER2_DIR_Pin);
         else if (htim == &htim4) HAL_GPIO_TogglePin(STEPPER3_DIR_GPIO_Port, STEPPER3_DIR_Pin);
+#if OLD_FEED
         else if (htim == &htim9) HAL_GPIO_TogglePin(STEPPER4_DIR_GPIO_Port, STEPPER4_DIR_Pin);
+#endif
     }
     if(frequency != 0)  lastFreq[StepperGetChannel(htim)] = frequency;
 #if STEPPER_INFO

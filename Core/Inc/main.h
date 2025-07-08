@@ -64,6 +64,8 @@ void SystemClock_Config(void);
 #define LED2_GPIO_Port GPIOE
 #define LED3_Pin GPIO_PIN_4
 #define LED3_GPIO_Port GPIOE
+#define SPEAKER_MUSIC1_Pin GPIO_PIN_5
+#define SPEAKER_MUSIC1_GPIO_Port GPIOE
 #define RS485_1_RX_TX_CONTROL_Pin GPIO_PIN_6
 #define RS485_1_RX_TX_CONTROL_GPIO_Port GPIOE
 #define STEPPER1_DIR_Pin GPIO_PIN_0
@@ -72,8 +74,8 @@ void SystemClock_Config(void);
 #define STEPPER2_DIR_GPIO_Port GPIOC
 #define STEPPER3_DIR_Pin GPIO_PIN_2
 #define STEPPER3_DIR_GPIO_Port GPIOC
-#define STEPPER4_DIR_Pin GPIO_PIN_3
-#define STEPPER4_DIR_GPIO_Port GPIOC
+#define SPEAKER_MUSIC2_Pin GPIO_PIN_3
+#define SPEAKER_MUSIC2_GPIO_Port GPIOC
 #define SERVO5_Pin GPIO_PIN_4
 #define SERVO5_GPIO_Port GPIOA
 #define RELAY_CONTROL2_Pin GPIO_PIN_4
@@ -110,14 +112,27 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN Private defines */
 
-#define RESET_BY_REMAIN_TIME   0
 #define TOTAL_DART_NUM  4
+#define TARGET_TEN  374, 371, 368, 365
+#define TARGET_YAW  -800, -200, -1000, -300
+#define RESET_BY_REMAIN_TIME   0
+#define TENSION_CONTROL_WHEN_CONNECT_TO_SERVER  1   //当连接到服务器时进行拉力闭环
+#define SERVER_TENSION_R   159
+#define SERVER_TENSION_L   164
 #define CONT_TO_READY_TO_SHOOT  10         //100ms
 #define SHOOT_BREAK  300         //100ms
 #define USE_game_progress_AND_stage_remain_time     0   //使用比赛剩余时间来触发飞镖
 #define USE_dart_remaining_time                     1   //使用己方飞镖发射剩余时间和闸门状态来发射飞镖
+#define USE_dart_launch_opening_status              1   //使用闸门状态数据（因为中部赛区的闸门数据是错的）
 #define START_TENSION_R   0//193//190
 #define START_TENSION_L   0//215//190
+#define TEN_ERROR_SHOOT_CONT_THRESOLD   5
+
+//speaker
+#define START_SPEAK_1   HAL_GPIO_WritePin(SPEAKER_MUSIC1_GPIO_Port, SPEAKER_MUSIC1_Pin, GPIO_PIN_SET)
+#define STOP_SPEAK_1    HAL_GPIO_WritePin(SPEAKER_MUSIC1_GPIO_Port, SPEAKER_MUSIC1_Pin, GPIO_PIN_RESET)
+#define START_SPEAK_2   HAL_GPIO_WritePin(SPEAKER_MUSIC2_GPIO_Port, SPEAKER_MUSIC2_Pin, GPIO_PIN_SET)
+#define STOP_SPEAK_2    HAL_GPIO_WritePin(SPEAKER_MUSIC2_GPIO_Port, SPEAKER_MUSIC2_Pin, GPIO_PIN_RESET)
 
 //stepper
 #define STEPPER_PARAS_TEST  0
@@ -125,7 +140,7 @@ void SystemClock_Config(void);
 #define STEPPER1    &htim1, TIM_CHANNEL_1   //PA8
 #define STEPPER2    &htim3, TIM_CHANNEL_1   //PA6
 #define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
-#define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
+//#define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
 #define STEPPER2_VS_1   1.9
 #define STILL_RATE  2
 #define STEPPER_CHANGE_TO_SMALL_K   14
@@ -156,10 +171,10 @@ void SystemClock_Config(void);
 
 //servo
 #define OLD_FEED                0
-#define SERVO_UP_DOWN_LEFT      1
-#define SERVO_UP_DOWN_RIGHT     2
-#define SERVO_TRIGGER           3
-#define SERVO_GRASP             4
+#define SERVO_TRIGGER           1
+#define SERVO_UP_DOWN_LEFT      4
+#define SERVO_UP_DOWN_RIGHT     3
+#define SERVO_GRASP             2
 #define SERVO_LEFT_RIGHT        5
 #define SERVO_UP_DOWN_RIGHT_INIT    18//SERVO_TRIGGER_MIDDLE//20
 #define SERVO_UP_DOWN_LEFT_INIT     122//SERVO_TRIGGER_MIDDLE//20
@@ -169,21 +184,22 @@ void SystemClock_Config(void);
 #define SERVO_UP_DOWN_LEFT_DOWN     35
 #define SERVO_UP_DOWN_RIGHT_SHOOT_DOWN    120
 #define SERVO_UP_DOWN_LEFT_SHOOT_DOWN     20
-#define SERVO_GRASP_GRASP   84
-#define SERVO_GRASP_INIT    84
-#define SERVO_GRASP_RELEASE 100//SERVO_TRIGGER_MIDDLE//120
+#define SERVO_GRASP_GRASP   75
+#define SERVO_GRASP_INIT    SERVO_GRASP_GRASP
+#define SERVO_GRASP_RELEASE 90//SERVO_TRIGGER_MIDDLE//120
 #define SERVO_PUTDOWN_DELAY 200    //2500//ms
 #define TEST_SERVO_TRIGGER  1
-#define SERVO_TRIGGER_INIT  80
-#define SERVO_TRIGGER_SHOOT 48
-#define SERVO_TRIGGER_MIDDLE    80
-#define SERVO_TRIGGER_RESET 127
+#define SERVO_TRIGGER_INIT  45//80
+#define SERVO_TRIGGER_SHOOT 28//48
+#define SERVO_TRIGGER_MIDDLE    45//80
+#define SERVO_TRIGGER_RESET 80//127
 #define SERVO_TRIGGER_MIDDLE_DELAY  9     //新扳机归中延时，*100ms
 #define SOFTWARE_SERVO_PERIOD       1000   //软件舵机PWM的period
-#define SERVO_LEFT_RIGHT_INIT       SERVO_LEFT_RIGHT_NOT_EDGE//120
-#define SERVO_LEFT_RIGHT_LEFT       26//20
+#define SERVO_LEFT_RIGHT_INIT       SERVO_LEFT_RIGHT_NOT_EDGE_LEFT//120
+#define SERVO_LEFT_RIGHT_LEFT       28//20
 #define SERVO_LEFT_RIGHT_RIGHT      115//120
-#define SERVO_LEFT_RIGHT_NOT_EDGE   35
+#define SERVO_LEFT_RIGHT_NOT_EDGE_LEFT   40
+#define SERVO_LEFT_RIGHT_NOT_EDGE_RIGHT   106
 #define SERVO_LEFT_RIGHT_MIDDLE     ((SERVO_LEFT_RIGHT_LEFT + SERVO_LEFT_RIGHT_RIGHT)/2) //40
 
 //FEED
@@ -193,7 +209,7 @@ void SystemClock_Config(void);
 #define DELAY_AFTER_GRASP_DART           200  // After ServoGrasp_GraspNextDart
 #define DELAY_AFTER_UP_TO_MOVE           200  // After ServoUD_UpToMove
 #define DELAY_AFTER_TO_MIDDLE            200  // After ServoLR_ToMiddle
-#define DELAY_AFTER_DOWN_TO_RELEASE      650  // After ServoUD_DownToRelease
+#define DELAY_AFTER_DOWN_TO_RELEASE      700  // After ServoUD_DownToRelease
 #define DELAY_AFTER_RELEASE_DART         200  // After ServoGrasp_Realease
 #define DELAY_AFTER_UP_TO_AVOID_CRASH    300  // After ServoUD_UpToAvoidCrash
 
@@ -213,8 +229,10 @@ void SystemClock_Config(void);
 #define ADC_DMA_INFO    0
 #define HALL_INFO   0
 #define TEN_INFO    0
+#define TEN_ERROR_INFO  1
+#define TEN_ERROR_INFO_DELAY_MS 1000
 #define SHOOT_INFO  0
-#define CAN_SHOOT_INFO  0
+#define CAN_SHOOT_INFO  1
 #define TEN_LIGHT_INFO    1
 #define UART5_INFO  1
 #define UART5_HADDLE_INFO  1
@@ -224,9 +242,9 @@ void SystemClock_Config(void);
 #define RS485_LIGHT_INFO    0
 #define SHOOT_INFO  0
 #define JUDGE_INFO  0
-#define JUDGE020A_HANDLED_INFO 1
-#define JUDGE0105_HANDLED_INFO 1
-#define JUDGE0001_HANDLED_INFO 1
+#define JUDGE020A_HANDLED_INFO 0
+#define JUDGE0105_HANDLED_INFO 0
+#define JUDGE0001_HANDLED_INFO 0
 #define JUDGE020A_RAW_INFO 0
 #define JUDGE0105_RAW_INFO 0
 #define JUDGE0001_RAW_INFO 0
@@ -283,7 +301,7 @@ extern double integralBias[2];
 #define READ_TENSION_T_TIMEOUT  9
 #define READ_TENSION_T_DELAY    9
 #define READ_TENSION_R_TIMEOUT  100
-#define FIRST_TENSION_START_TIME_MS 20000   //开机后读拉力传感器的时间，后续就把传感器关闭
+#define FIRST_TENSION_START_TIME_MS 0   //开机后读拉力传感器的时间，后续就把传感器关闭
 #define RS485_MUTATION_THRESHOLD    3
 #define RS485_NORMAL    1
 #if RS485_NORMAL
@@ -301,8 +319,8 @@ extern double integralBias[2];
 //shoot progress
 #define RESET_SPEED 700
 #define LOAD_SPEED  4500//3400
-#define LOAD_DELAY  0//50//100
-#define AFTER_LOAD_DELAY  200
+#define LOAD_DELAY  50//50//100
+#define LOAD_STILL_DELAY  300//50//100
 #define RELEASE_SPEED   -4600//-3000
 #define RELEASE_OK_DELAY   300//-3000
 #define ERROR_LOAD_SPEED   2000
@@ -321,8 +339,7 @@ extern double integralBias[2];
 #define OLD_TRIGGER 0               //机械上是老扳机？
 
 //judge system uart
-#define RX6_BUFF_LENGTH 10000
-#define RX6_FIND_BUFF_LENGTH 5000
+#define RX6_BUFF_LENGTH 1280
 #define START_LOAD_TIME1    (7*60-30)       //390开始拉
 #define START_SHOOT_TIME1    (7*60-30-7)    //383开始射
 #define STOP_SHOOT_TIME1    (7*60-30-27)    //363停止射
@@ -333,9 +350,10 @@ extern double integralBias[2];
 
 //remote
 #define MANUAL_YAW  1
+#define SLANTED_YAW_COMPENSATION    1
 #define USE_REMOTE  0
+#define AUTO_OPEN_AIMBOT    0
 #define AIMBOT_RX_BUF_LEN   18
-#define AIMBOT_MODE 1  // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
 #define AIMBOT_DEBUG    0
 #define AIMBOT_SET_STEPPER3_ZERO_THRESOLD   300     //多少次丢目标后就停止yaw
 #define AIMBOT_KP   0.0004//0.09

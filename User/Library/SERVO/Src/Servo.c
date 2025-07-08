@@ -286,16 +286,16 @@ void ServoLR_ToNotEdge(int dartSerial) {
     printf("TO NOT EDGE, dartSerial = %d\n", dartSerial);
     switch (dartSerial) {
         case 1:
-            ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE, 0);
+            ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE_LEFT, 0);
             break;
         case 2:
-            ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE, 0);
+            ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE_LEFT, 0);
             break;
         case 3:
-            ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE, 0);
+            ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE_LEFT, 0);
             break;
         case 4:
-            ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE, 0);
+            ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE_RIGHT, 0);
             break;
     }
 }

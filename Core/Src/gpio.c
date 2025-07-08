@@ -53,11 +53,11 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, LED1_Pin|LED2_Pin|LED3_Pin|RS485_1_RX_TX_CONTROL_Pin
-                          |RELAY_CONTROL_Pin|RS485_2_RX_TX_CONTROL_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, LED1_Pin|LED2_Pin|LED3_Pin|SPEAKER_MUSIC1_Pin
+                          |RS485_1_RX_TX_CONTROL_Pin|RELAY_CONTROL_Pin|RS485_2_RX_TX_CONTROL_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, STEPPER1_DIR_Pin|STEPPER2_DIR_Pin|STEPPER3_DIR_Pin|STEPPER4_DIR_Pin
+  HAL_GPIO_WritePin(GPIOC, STEPPER1_DIR_Pin|STEPPER2_DIR_Pin|STEPPER3_DIR_Pin|SPEAKER_MUSIC2_Pin
                           |RELAY_CONTROL2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
@@ -66,8 +66,10 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, SONIC_RANGE_TRIG1_Pin|SONIC_RANGE_TRIG2_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PEPin PEPin PEPin PEPin */
-  GPIO_InitStruct.Pin = LED1_Pin|LED2_Pin|LED3_Pin|RELAY_CONTROL_Pin;
+  /*Configure GPIO pins : PEPin PEPin PEPin PEPin
+                           PEPin */
+  GPIO_InitStruct.Pin = LED1_Pin|LED2_Pin|LED3_Pin|SPEAKER_MUSIC1_Pin
+                          |RELAY_CONTROL_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -81,7 +83,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PCPin PCPin PCPin PCPin */
-  GPIO_InitStruct.Pin = STEPPER1_DIR_Pin|STEPPER2_DIR_Pin|STEPPER3_DIR_Pin|STEPPER4_DIR_Pin;
+  GPIO_InitStruct.Pin = STEPPER1_DIR_Pin|STEPPER2_DIR_Pin|STEPPER3_DIR_Pin|SPEAKER_MUSIC2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

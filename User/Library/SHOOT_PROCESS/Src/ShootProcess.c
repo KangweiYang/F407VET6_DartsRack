@@ -114,6 +114,7 @@ int FeedFSMState(void){
 }
 
 void DartFeedFSM(void){
+#if OLD_FEED
     switch (feedFSMstate) {
         case -1:                //downward moving
             StepperStart(STEPPER4);
@@ -123,11 +124,9 @@ void DartFeedFSM(void){
             StepperSetSpeed(STEPPER4, 0);
             break;
         case 1:                 //upward moving
-#if OLD_FEED
             StepperStart(STEPPER4);
             StepperSetSpeed(STEPPER4, 500);
             ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_UP, 0);
-#endif
             break;
         case 2:                 //dart loading
             StepperSetSpeed(STEPPER4, 0);
@@ -136,6 +135,7 @@ void DartFeedFSM(void){
             StepperSetSpeed(STEPPER4, 0);
             break;
     }
+#endif
 }
 
 void DartFeedStartDown(void){
@@ -254,7 +254,6 @@ void DartLoad(int loadSpeed, int dartSerial) {
     HAL_Delay(LOAD_DELAY);
     TriggerReset();
     TriggerReset();
-    HAL_Delay(AFTER_LOAD_DELAY);
 #if SHOOT_INFO
     printf("DART LOAD OK!\n");
 #endif
@@ -265,6 +264,7 @@ void DartLoad(int loadSpeed, int dartSerial) {
     motor3Flag = 0;
     targetVel[1] = 0;
     targetVel[2] = 0;
+    HAL_Delay(LOAD_STILL_DELAY);
 }
 
 void DartRelease(int dartSerial) {

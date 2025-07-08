@@ -69,9 +69,11 @@ int targetYawPul = 0, UART_TargetYawPul = 0, UART_TargetYawSpeed = 0;
 float yaw_error;
 uint8_t target_status;
 float lastYawError, integralYawError;
+int aimbot_mode = 1; // 0: 不开自瞄, 不录像 1: 开自瞄且录像 2: 录像
+int tensionControlled = 0;
 
-int furTarTen[5];
-int furTarYaw[5];
+int furTarTen[5] = {TARGET_TEN};
+int furTarYaw[5] = {TARGET_YAW};
 
 int shootFlag = 0;
 int shooting = 0;
@@ -259,7 +261,9 @@ void UserInit(void) {
     StepperInit(STEPPER1, 1680 - 1);
     StepperInit(STEPPER2, 1680 - 1);
     StepperInit(STEPPER3, 1680 - 1);
+#if OLD_FEED
     StepperInit(STEPPER4, 1680 - 1);
+#endif
     ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_INIT, 10);
     ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_INIT, 10);
     ServoSet(SERVO_GRASP, SERVO_GRASP_INIT, 10);
@@ -277,12 +281,15 @@ void UserInit(void) {
 
 
     StepperSetSpeed(STEPPER3, 0);
+#if OLD_FEED
     StepperSetSpeed(STEPPER4, 0);
+#endif
     HAL_Delay(100);
 
 //    StepperTensionControlStart(1);
 //    HAL_TIM_Base_Start_IT(&htim7);
     for (int i = 0; i < 20; ++i){
+        tension1 = RS485_1_GetTension();
         tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
     }
@@ -323,6 +330,7 @@ void ShootFirstDart(){
             stepper1Flag = 1;
             prevTen1[i] = tension1;
             tension1 = RS485_1_GetTension();
+            tension1 = RS485_1_GetTension();
             prevTenL[i] = tensionL;
             tensionL = RS485_2_GetTension();
             if(tension1 == 0){
@@ -357,6 +365,7 @@ void ShootFirstDart(){
     HAL_Delay(500);
 }
 void ShootOneDart(int dartSerial) {
+    START_SPEAK_1;
 #if USE_RELAY_CONTROL
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
 #endif
@@ -382,6 +391,8 @@ void ShootOneDart(int dartSerial) {
                || ((stage_remain_time <= STOP_SHOOT_TIME1) && (stage_remain_time >= START_SHOOT_TIME2))
                || stage_remain_time <= STOP_SHOOT_TIME2) {
 #elif USE_dart_remaining_time
+
+#if USE_dart_launch_opening_status
             while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
                || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
                || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)
@@ -389,6 +400,14 @@ void ShootOneDart(int dartSerial) {
                || dart_launch_opening_status != OPEN
                || game_progress != IN_GAME
                || dart_target == 0) && shootFlag != 5)){
+#else
+        while ((tension1 != targetTen[0]) || (tensionL != targetTen[1])
+               || (IntArrayComp(prevTen1, targetTen[0], WAIT_TIMES) != WAIT_TIMES)
+               || (IntArrayComp(prevTenL, targetTen[1], WAIT_TIMES) != WAIT_TIMES)
+               || ((dart_remaining_time == 0
+                    || game_progress != IN_GAME
+                    || dart_target == 0) && shootFlag != 5)){
+#endif
 //               || (target_status && (yaw_error - (float)targetYawPul) >= SHOOT_YAW_THRESOLD || (yaw_error - (float)targetYawPul) <= -SHOOT_YAW_THRESOLD)) {
 
 #if SHOOT_INFO
@@ -422,6 +441,7 @@ void ShootOneDart(int dartSerial) {
                 stepper1Flag = 0;
                 prevTen1[i] = tension1;
                 tension1 = RS485_1_GetTension();
+                tension1 = RS485_1_GetTension();
                 prevTenL[i] = tensionL;
                 tensionL = RS485_2_GetTension();
                 continue;
@@ -432,13 +452,26 @@ void ShootOneDart(int dartSerial) {
             tension1 = RS485_1_GetTension();
             prevTenL[i] = tensionL;
             tensionL = RS485_2_GetTension();
-                if(tension1 == 0 || tensionL == 0){
+#if TEN_ERROR_INFO
+            static int32_t printTick = 0, tenErrorCont = 0;
+                if((tension1 == 0 || tensionL == 0) && printTick <= HAL_GetTick() - TEN_ERROR_INFO_DELAY_MS){
                     if(tension1 == 0)   stepper0Flag = 0;
                     else stepper0Flag = 1;
                     if(tensionL == 0)   stepper1Flag = 0;
                     else stepper1Flag = 1;
                     printf("tension ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! R:%d, L:%d\n\n\n", tension1, tensionL);
+                    printTick = HAL_GetTick();
+                    tenErrorCont ++;
+                    if(tenErrorCont > TEN_ERROR_SHOOT_CONT_THRESOLD && (dart_remaining_time > 0
+                                                                     && dart_launch_opening_status == OPEN
+                                                                     && game_progress == IN_GAME
+                                                                     && dart_target != 0)){
+                        tenErrorCont = 0;
+                        break;
+                    }
                 }
+#endif
+                tenErrorCont == 0;
             i++;
             if(i >= WAIT_TIMES) i = 0;
             /*
@@ -454,17 +487,20 @@ void ShootOneDart(int dartSerial) {
              */
         }
     }
+    STOP_SPEAK_1;
     shooting = 1;
     tensionControlFlag = 0;
     stepper0Flag = 0;
     stepper1Flag = 0;
     StepperSetSpeed(STEPPER1, 0);
     StepperSetSpeed(STEPPER2, 0);
+    START_SPEAK_2;
     DartShoot(dartSerial);
 #if USE_RELAY_CONTROL
     HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
 #endif
     HAL_Delay(500);
+    STOP_SPEAK_2;
 }
 
 /**
@@ -611,6 +647,7 @@ int main(void) {
     motor3Flag = 1;
     HAL_TIM_Base_Start_IT(&htim6);
     HAL_TIM_Base_Start_IT(&htim10);
+    START_SPEAK_2;
     for (int i = 0; i < 4; ++i) {
         tension1 = targetTen[0];
         tensionL = targetTen[1];
@@ -621,17 +658,34 @@ int main(void) {
         targetVel[i] = 0;
         HAL_Delay(500); //need time to stope to stop
     }
+    STOP_SPEAK_2;
     HAL_Delay(1000); //need time to stop
 #endif
     StepperStart(STEPPER1);
     StepperStart(STEPPER2);
     StepperStart(STEPPER3);
+#if OLD_FEED
     StepperStart(STEPPER4);
+#endif
 //    motor0Flag = 0;
 //    motor1Flag = 0;
 //    motor2Flag = 0;
 //    motor3Flag = 0;
     while(1) {
+
+#if TENSION_CONTROL_WHEN_CONNECT_TO_SERVER
+    if(game_progress == 1 && stepper0Flag == 0 && stepper1Flag == 0 && tensionControlled == 0) {
+        canShootFlag = 0;
+        shootFlag = 0;
+        targetTen[0] = SERVER_TENSION_R;
+        targetTen[1] = SERVER_TENSION_L;
+#if USE_RELAY_CONTROL
+        HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_SET);
+#endif
+        stepper1Flag = 1;
+        stepper0Flag = 1;
+#endif
+    }
 
 #if RESET_BY_REMAIN_TIME
         if(stage_remain_time == RESET_BY_REMAIN_TIME) {HAL_NVIC_SystemReset();}
@@ -649,13 +703,26 @@ int main(void) {
           canShootFlag = 0;
       }
 #elif USE_dart_remaining_time
-      if(canShootFlag == 0 && game_progress == IN_GAME && dart_target != 0 && ((dart_remaining_time >= LEAST_SHOOT_TIME && dart_remaining_time > 0) || (lastDart_launch_opening_status == 1 && dart_launch_opening_status == 2))){
+
+#if USE_dart_launch_opening_status
+      if(canShootFlag == 0 && game_progress == IN_GAME && dart_target != 0 && (dart_remaining_time >= LEAST_SHOOT_TIME || (lastDart_launch_opening_status == 1 && dart_launch_opening_status == 2))){
+#else
+      if(canShootFlag == 0 && game_progress == IN_GAME && dart_target != 0 && (dart_remaining_time >= LEAST_SHOOT_TIME || (lastDart_launch_opening_status == 1 && dart_launch_opening_status == 2))){
+#endif
           canShootFlag = 1;
+          aimbot_mode = 1;
           printf("set canShootFlag = %d!!!!!!!!\n\n", canShootFlag);
           if(shootFlag == 0) shootFlag = 1;
       }
+#if USE_dart_launch_opening_status
       if(canShootFlag == 1 && ((dart_remaining_time < LEAST_SHOOT_TIME && dart_launch_opening_status == 0) || (lastDart_launch_opening_status == 0 && dart_launch_opening_status == 2))){
+#else
+        if(canShootFlag == 1 && dart_remaining_time < LEAST_SHOOT_TIME){
+#endif
           canShootFlag = 0;
+#if AUTO_OPEN_AIMBOT
+          aimbot_mode = 0;              //关闭自瞄
+#endif
           printf("set canShootFlag = %d!!!!!!!!\n\n", canShootFlag);
       }
       if(lastDart_launch_opening_status != dart_launch_opening_status)  lastDart_launch_opening_status = dart_launch_opening_status;
@@ -665,6 +732,9 @@ int main(void) {
           printf("Tick = %ld\n", HAL_GetTick());
 #if USE_RELAY_CONTROL
           HAL_GPIO_WritePin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin, GPIO_PIN_RESET);
+#endif
+#if AUTO_OPEN_AIMBOT
+          aimbot_mode = 0; //关自瞄
 #endif
           tension1 = 0;
           tensionL = 0;
@@ -687,6 +757,7 @@ int main(void) {
 #endif
             stepper0Flag = 0;
             stepper1Flag = 0;
+            tensionControlled = 1;
         }
         if(contFromLastUart >= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK && contFromLastUart <= CONT_TO_READY_TO_SHOOT - SHOOT_BREAK + 10){
 //            stepper0Flag = 1;
@@ -709,7 +780,9 @@ int main(void) {
                 else    shootFlag = -1;                     //防止最后再发一发
                 canShootFlag = 0;
                 DartFeedStartDown();
+#if OLD_FEED
                 StepperStart(STEPPER4);
+#endif
                 resetFeedCont += 128;
                 HAL_Delay(13000);
 #if !USE_game_progress_AND_stage_remain_time
@@ -787,9 +860,9 @@ double stepper_Kp0[90] = {
         150,                                       // 165
 
         // 170-420线性下降（170→120）
-        150,110,140,158,154,150,146,142,138,134,  // 175-265
-        130,126,122,118,114,110,106,102,98,84,    // 275-365
-        70,66,70,65,                              // 375-405
+        150,110,140,158,166,150,146,142,138,134,  // 175-265
+        130,126,122,118,114,110,106,102,54,50,    // 275-365
+        48,45,42,39,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
         60,56,46,45,44,39,37, 36,32, 30,            // 425-465
@@ -815,9 +888,9 @@ double stepper_Kp1[90] = {
         150,                                       // 165
 
         // 170-420线性下降（170→120）
-        150,110,140,158,154,150,146,142,138,134,  // 175-265
-        130,126,122,118,114,110,106,102,98,84,    // 275-365
-        70,66,70,65,                              // 375-405
+        150,110,140,158,166,150,146,142,138,134,  // 175-265
+        130,126,122,118,114,110,106,102, 65,54,    // 275-365
+        51,48,46,43,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
         60,56,46,45,44,39,37, 36,35, 34,            // 425-465
@@ -949,7 +1022,7 @@ void PrintCarData(CarData *data) {
 
 void CarDataHandle(CarData *cardata, uint8_t number, uint8_t dune) {
     cardata->header = 0xA5;
-    cardata->mode = 0x01;
+    cardata->mode = aimbot_mode;
 
     // 计算CRC8（覆盖header和mode）
     uint8_t crc8_data[2] = {cardata->header, cardata->mode};
@@ -1048,28 +1121,32 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //            HAL_GPIO_TogglePin(YAW_STEPPER_PUL_GPIO_Port, YAW_STEPPER_PUL_Pin);
 //        }
 //        lastYawSpeed = UART_TargetYawSpeed;
-#if AIMBOT_MODE
+if(aimbot_mode) {
 //        static int16_t aimbotDelayCont = 0;
-        static int32_t aim_lost_cont;
+    static int32_t aim_lost_cont;
 #if AIMBOT_DEBUG
-        if(target_status && shooting == 0){                  //如果检测到绿灯且不在发射中
+    if(target_status && shooting == 0){                  //如果检测到绿灯且不在发射中
 #else
-        if(target_status && shooting == 0 && shootFlag != 0){                  //如果检测到绿灯且不在发射中
+    if (target_status && shooting == 0 && shootFlag != 0) {                  //如果检测到绿灯且不在发射中
 #endif
-            if((yaw_error - targetYawPul) <= INTEGRAL_YAW_START_BIAS && (yaw_error - targetYawPul) >= -INTEGRAL_YAW_START_BIAS)
-                integralYawError +=  yaw_error - targetYawPul;
-            if(integralYawError > INTEGRAL_YAW_BIAS_SUB)   integralYawError -= INTEGRAL_YAW_BIAS_SUB;
-            else if(integralYawError < -INTEGRAL_YAW_BIAS_SUB)   integralYawError += INTEGRAL_YAW_BIAS_SUB;
-            if(integralYawError <= -INTEGRAL_YAW_MAX)    integralYawError = -INTEGRAL_YAW_MAX;
-            if(integralYawError >= INTEGRAL_YAW_MAX) integralYawError = INTEGRAL_YAW_MAX;
-            if((yaw_error - targetYawPul) >= -INTEGRAL_YAW_SET_ZERO && (yaw_error - targetYawPul) <= INTEGRAL_YAW_SET_ZERO)   integralYawError = 0;
-            if((yaw_error - targetYawPul) <= AIMBOT_SET_ZERO && (yaw_error - targetYawPul) >= -AIMBOT_SET_ZERO) StepperStop(STEPPER3);
-            else    {
-                if(AIMBOT_PID >= AIMBOT_MAX_SPEED)  UART_TargetYawSpeed = AIMBOT_MAX_SPEED;
-                else if(AIMBOT_PID <= -AIMBOT_MAX_SPEED) UART_TargetYawSpeed = -AIMBOT_MAX_SPEED;
-                else    UART_TargetYawSpeed = AIMBOT_PID;
-                StepperStart(STEPPER3);
-            }
+        if ((yaw_error - targetYawPul) <= INTEGRAL_YAW_START_BIAS &&
+            (yaw_error - targetYawPul) >= -INTEGRAL_YAW_START_BIAS)
+            integralYawError += yaw_error - targetYawPul;
+        if (integralYawError > INTEGRAL_YAW_BIAS_SUB) integralYawError -= INTEGRAL_YAW_BIAS_SUB;
+        else if (integralYawError < -INTEGRAL_YAW_BIAS_SUB) integralYawError += INTEGRAL_YAW_BIAS_SUB;
+        if (integralYawError <= -INTEGRAL_YAW_MAX) integralYawError = -INTEGRAL_YAW_MAX;
+        if (integralYawError >= INTEGRAL_YAW_MAX) integralYawError = INTEGRAL_YAW_MAX;
+        if ((yaw_error - targetYawPul) >= -INTEGRAL_YAW_SET_ZERO &&
+            (yaw_error - targetYawPul) <= INTEGRAL_YAW_SET_ZERO)
+            integralYawError = 0;
+        if ((yaw_error - targetYawPul) <= AIMBOT_SET_ZERO && (yaw_error - targetYawPul) >= -AIMBOT_SET_ZERO)
+            StepperStop(STEPPER3);
+        else {
+            if (AIMBOT_PID >= AIMBOT_MAX_SPEED) UART_TargetYawSpeed = AIMBOT_MAX_SPEED;
+            else if (AIMBOT_PID <= -AIMBOT_MAX_SPEED) UART_TargetYawSpeed = -AIMBOT_MAX_SPEED;
+            else UART_TargetYawSpeed = AIMBOT_PID;
+            StepperStart(STEPPER3);
+        }
 //            StepperStart(STEPPER3);
 //            if(aimbotDelayCont < AIMBOT_CONTROL_DELAY)  aimbotDelayCont ++;
 //            else{
@@ -1078,21 +1155,21 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //            UART_TargetYawSpeed = yaw_error / 5;
 //                printf("UART_TargetYawSpeed = %d\n", UART_TargetYawSpeed);
 //            }
-            StepperSetSpeed(STEPPER3, (int16_t) UART_TargetYawSpeed);
-            aim_lost_cont = 0;
-        } else if(target_status == 0){
-            aim_lost_cont ++;
+        StepperSetSpeed(STEPPER3, (int16_t) UART_TargetYawSpeed);
+        aim_lost_cont = 0;
+    } else if (target_status == 0) {
+        aim_lost_cont++;
 //            printf("aim lost cont = %d\n", aim_lost_cont);
-            if(aim_lost_cont >= AIMBOT_SET_STEPPER3_ZERO_THRESOLD){
-                aim_lost_cont = 0;
-                StepperSetSpeed(STEPPER3, 0);
-            }
+        if (aim_lost_cont >= AIMBOT_SET_STEPPER3_ZERO_THRESOLD) {
+            aim_lost_cont = 0;
+            StepperSetSpeed(STEPPER3, 0);
         }
+    }
 #if AIMBOT_DEBUG
-//        if(canShootFlag == 0 && shootFlag != 0) StepperStop(STEPPER3);
+    //        if(canShootFlag == 0 && shootFlag != 0) StepperStop(STEPPER3);
 #endif
-        lastYawError = yaw_error - targetYawPul;
-#endif
+    lastYawError = yaw_error - targetYawPul;
+}
         //手动调yaw
 #if MANUAL_YAW
         if(shootFlag == 0 && targetYawPul != 0){
@@ -1115,9 +1192,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             static double integralBias[2];
                 //AIMBOT UART
                 HAL_UART_Receive_DMA(&huart5, _rx_buf, AIMBOT_RX_BUF_LEN);
-                CarData *car_data;
-                CarDataHandle(&car_data, 1, 1);
-                AimbotSendData(&car_data, 8);
+                if(aimbot_mode) {
+                    CarData *car_data;
+                    CarDataHandle(&car_data, 1, 1);
+                    AimbotSendData(&car_data, 8);
+                }
             if(stepper0Flag == 0) StepperSetSpeed(STEPPER1, 0);
             else if (stepper0Flag == 1 && tension1 <= TENSION_PROTECT_HIGH && tension1 >= TENSION_PROTECT_LOW) {
 //            IncrementalPI(4, velKpStepper, velKiStepper, tension1, targetTen[0]);
@@ -1258,52 +1337,52 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             targetVel[2] = 0;
         }
 
-#if AIMBOT_MODE
-// 在数据接收后的处理逻辑中：
-        int not_detect_cont = 0;
-        for (int i = 0; i < AIMBOT_RX_BUF_LEN - 9; ++i) {
-            if (_rx_buf[0] == 0xA5) {
-                // 提取 yaw_error（大端转小端）
-                uint8_t *yaw_ptr = &_rx_buf[2];  // 原数据：0x90,0xA0,0x2A,0xC4（大端）
+if(aimbot_mode) {
+    // 在数据接收后的处理逻辑中：
+    int not_detect_cont = 0;
+    for (int j = 0; j < AIMBOT_RX_BUF_LEN - 9; ++j) {
+        if (_rx_buf[j + 0] == 0xA5) {
+            // 提取 yaw_error（大端转小端）
+            uint8_t *yaw_ptr = &_rx_buf[j + 2];  // 原数据：0x90,0xA0,0x2A,0xC4（大端）
 
-                // 手动反转字节序（大端 -> 小端）
-                union {
-                    uint32_t u;
-                    float f;
-                } yaw_convert;
+            // 手动反转字节序（大端 -> 小端）
+            union {
+                uint32_t u;
+                float f;
+            } yaw_convert;
 
-                // 将反转后的字节按大端序组合成uint32
-                yaw_convert.u = (yaw_ptr[3] << 24) |  // 原第4字节（0xC4）移到最高位
-                                (yaw_ptr[2] << 16) |  // 原第3字节（0x2A）
-                                (yaw_ptr[1] << 8) |  // 原第2字节（0xA0）
-                                yaw_ptr[0];          // 原第1字节（0x90）在最低位
+            // 将反转后的字节按大端序组合成uint32
+            yaw_convert.u = (yaw_ptr[j + 3] << 24) |  // 原第4字节（0xC4）移到最高位
+                            (yaw_ptr[j + 2] << 16) |  // 原第3字节（0x2A）
+                            (yaw_ptr[j + 1] << 8) |  // 原第2字节（0xA0）
+                            yaw_ptr[j + 0];          // 原第1字节（0x90）在最低位
 
-                yaw_error = yaw_convert.f;     // 通过联合体转为float
+            yaw_error = yaw_convert.f;     // 通过联合体转为float
 
-                // 打印调试信息
+            // 打印调试信息
 //                printf("yaw_bytes: %02X %02X %02X %02X\n",
 //                       yaw_ptr[3], yaw_ptr[2], yaw_ptr[1], yaw_ptr[0]);
 //                printf("yaw_uint: %08lX\n", (uint32_t)yaw_convert.u);
 
-                // 提取 target_status
-                target_status = _rx_buf[6];
+            // 提取 target_status
+            target_status = _rx_buf[j + 6];
 
 //            printf("yaw_error = %f\n", yaw_error);
 //            printf("target_status = %d\n", target_status);
 
-                for (int i = 0; i < 18; ++i) {
-                    _rx_buf[i] = '\0';
-                }
-            } else {
-                not_detect_cont ++;
-
-//            printf("yaw_error = %f\n", yaw_error);
-//            printf("target_status = %d\n", target_status);
+            for (int i = 0; i < 18; ++i) {
+                _rx_buf[i] = '\0';
             }
+        } else {
+            not_detect_cont++;
+
+//            printf("yaw_error = %f\n", yaw_error);
+//            printf("target_status = %d\n", target_status);
         }
-        if(not_detect_cont >= AIMBOT_RX_BUF_LEN - 9)    target_status = 0;
+    }
+    if (not_detect_cont >= AIMBOT_RX_BUF_LEN - 9) target_status = 0;
 //            PrintCarData(&car_data);
-#endif
+}
     }
     if (htim->Instance == htim10.Instance) {     //100ms timer
         static uint16_t pointer, couut;
@@ -1371,7 +1450,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             printf("FSM: %d, contFromLastUart: %lld\n", FeedFSMState(), contFromLastUart);
 #endif
 #if CAN_SHOOT_INFO
-            printf("can_shoot_flag = %d, shootFlag = %d, furTarTen[%d - 1] = %d, game_progress = %d, dart_target = %d, dart_remaining_time = %d, lastDart_launch_opening_status = %d, dart_launch_opening_status = %d\n", canShootFlag, shootFlag, shootFlag, furTarTen[shootFlag - 1], game_progress, dart_target, dart_remaining_time, lastDart_launch_opening_status, dart_launch_opening_status);
+            printf("can_shoot_flag = %d, shootFlag = %d, furTarTen[%d - 1] = %d, game_progress = %d, dart_target = %d, dart_remaining_time = %d, lastDart_launch_opening_status = %d, dart_launch_opening_status = %d, stage_time = %d\n", canShootFlag, shootFlag, shootFlag, furTarTen[shootFlag - 1], game_progress, dart_target, dart_remaining_time, lastDart_launch_opening_status, dart_launch_opening_status, stage_remain_time);
 
 #endif
 #if TEN_LIGHT_INFO
@@ -1645,7 +1724,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
                 printf("ResetFeed %d\n", cout4);
 //                DartFeedStartDown();
                 DartFeedStartDown();
+#if OLD_FEED
                 StepperStart(STEPPER4);
+#endif
                 resetFeedCont += 40;
             } else if (ContainsSubString(rxHandleBuf, SonicRangeTestSetParas)) {
                 static int cout6;

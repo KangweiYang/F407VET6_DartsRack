@@ -264,8 +264,8 @@ void UserInit(void) {
 #if OLD_FEED
     StepperInit(STEPPER4, 1680 - 1);
 #endif
-    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_INIT, 10);
     ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_INIT, 10);
+    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_INIT, 10);
     ServoSet(SERVO_GRASP, SERVO_GRASP_INIT, 10);
     ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_INIT, 10);
     ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_INIT, 10);
@@ -273,7 +273,6 @@ void UserInit(void) {
     ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 10);
     ServoSet(SERVO_UP_DOWN, SERVO_UP_DOWN_UP, 1);                      //Start up
 #endif
-    ServoSet(4, 500, 10);
     Double_PID_Init();
 
     StepperSetSpeed(STEPPER1, 0);
@@ -1740,18 +1739,18 @@ if(aimbot_mode) {
                 static int trig;
                 if(trig == 0){
                     trig = 1;
-//                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_UP, 0);
-//                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_UP, 0);
-                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_RESET, 0);
+                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_UP, 0);
+                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_UP, 0);
+//                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_RESET, 0);
 //                    ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 0);
 //                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_RIGHT, 0);
                     printf("RESET TRIGGE, init grasp, SERVO_LEFT_RIGHT_RIGHT, SERVO_UP_DOWN_LEFT_UP, SERVO_UP_DOWN_RIGHT_UP\n");
                     servoTriggerCont = 0;
                 } else if(trig == 1){
                     trig = 0;
-//                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_DOWN, 0);
-//                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_DOWN, 0);
-                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_SHOOT, 0);
+                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_DOWN, 0);
+                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_DOWN, 0);
+//                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_SHOOT, 0);
 //                    ServoSet(SERVO_GRASP, SERVO_GRASP_GRASP, 0);
 //                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_LEFT, 0);
                     printf("SHOT TRIGGE, grasp grasp, SERVO_LEFT_RIGHT_LEFT, SERVO_UP_DOWN_LEFT_DOWN, SERVO_UP_DOWN_RIGHT_DOWN\n");

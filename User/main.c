@@ -289,7 +289,6 @@ void UserInit(void) {
 //    HAL_TIM_Base_Start_IT(&htim7);
     for (int i = 0; i < 20; ++i){
         tension1 = RS485_1_GetTension();
-        tension1 = RS485_1_GetTension();
         tensionL = RS485_2_GetTension();
     }
 //    HAL_DMA_Init(&hdma2);
@@ -328,7 +327,6 @@ void ShootFirstDart(){
             stepper0Flag = 1;
             stepper1Flag = 1;
             prevTen1[i] = tension1;
-            tension1 = RS485_1_GetTension();
             tension1 = RS485_1_GetTension();
             prevTenL[i] = tensionL;
             tensionL = RS485_2_GetTension();
@@ -440,7 +438,6 @@ void ShootOneDart(int dartSerial) {
                 stepper1Flag = 0;
                 prevTen1[i] = tension1;
                 tension1 = RS485_1_GetTension();
-                tension1 = RS485_1_GetTension();
                 prevTenL[i] = tensionL;
                 tensionL = RS485_2_GetTension();
                 continue;
@@ -465,6 +462,11 @@ void ShootOneDart(int dartSerial) {
                                                                      && dart_launch_opening_status == OPEN
                                                                      && game_progress == IN_GAME
                                                                      && dart_target != 0)){
+                        tenErrorCont = 0;
+                        break;
+                    }
+
+                    if(tenErrorCont > TEN_ERROR_SHOOT_CONT_THRESOLD){
                         tenErrorCont = 0;
                         break;
                     }
@@ -1171,7 +1173,7 @@ if(aimbot_mode) {
 }
         //手动调yaw
 #if MANUAL_YAW
-        if(shootFlag == 0 && targetYawPul != 0){
+        if(shootFlag == 0 && (targetYawPul <= 515 && targetYawPul >= -515)){
             if(targetYawPul > 0)    {
                 StepperSetSpeed(STEPPER3, 100);
                 StepperStart(STEPPER3);
@@ -1237,6 +1239,46 @@ if(aimbot_mode) {
                     }
                 } else {
                     if (STEPPER1_Kp_SQ < -STEPPER1_MAX_PUL) {
+                        /*printf("----- STEPPER1_Kp_SQ 参数调试 -----\n");
+                        printf("posKpStepper0 = %f\n", posKpStepper0);
+                        printf("tension1 = %f\n", (double)tension1);
+                        printf("targetTen[0] = %f\n", targetTen[0]);
+                        printf("integralBias[0] = %f\n", integralBias[0]);
+                        printf("lastBias = %f\n", lastBias);
+
+// 计算各个部分的值
+                        double error = (double)tension1 - targetTen[0];
+                        double abs_error = fabs(error);
+                        double p_term = -posKpStepper0 * error * abs_error;
+                        double i_term = -posKiStepper0 * integralBias[0];
+                        double d_error = error - lastBias;
+                        double d_term = posKdStepper0 * d_error;
+
+// 打印详细计算结果
+                        printf("\n详细计算步骤:\n");
+                        printf("误差 (tension1 - targetTen[0]) = %f\n", error);
+                        printf("绝对误差 = %f\n", abs_error);
+                        printf("\nP项: -Kp * 误差 * |误差| = -%.2f * %.2f * %.2f = %f\n",
+                               posKpStepper0, error, abs_error, p_term);
+                        printf("I项: -Ki * 积分偏差 = -%.2f * %.2f = %f\n",
+                               posKiStepper0, integralBias[0], i_term);
+                        printf("D项: Kd * (误差 - 上一偏差) = %.2f * (%.2f - %.2f) = %.2f * %.2f = %f\n",
+                               posKdStepper0, error, lastBias, posKdStepper0, d_error, d_term);
+                        printf("\n最终计算结果 = P + I + D = %f + %f + %f = %f\n",
+                               p_term, i_term, d_term, STEPPER1_Kp_SQ);
+
+                        printf("----- 结束 STEPPER1_Kp_SQ 参数打印 -----\n\n");
+                        */
+
+                        double error = (double)tension1 - targetTen[0];
+                        double abs_error = fabs(error);
+                        double p_term = -posKpStepper0 * error * abs_error;
+                        double i_term = -posKiStepper0 * integralBias[0];
+                        double d_error = error - lastBias;
+                        double d_term = posKdStepper0 * d_error;
+                        printf("\ntension = %d, 最终计算结果 = P + I + D = %f + %f + %f = %f\n",
+                               tension1, p_term, i_term, d_term, STEPPER1_Kp_SQ);
+
                         StepperSetSpeed(STEPPER1, -STEPPER1_MAX_PUL);
                         stepper0Speed = -STEPPER1_MAX_PUL;
                     } else if (STEPPER1_Kp_SQ > STEPPER1_MAX_PUL) {
@@ -1290,6 +1332,17 @@ if(aimbot_mode) {
                 StepperStart(STEPPER2);
                 if(targetTen[1] < STEPPER_NOR_SQ_TEN_THRESOLD) {
                     if (STEPPER2_Kp < -STEPPER2_MAX_PUL) {
+
+//                        printf("----- STEPPER2_Kp_SQ 参数调试 -----\n");
+//                        printf("STEPPER2_VS_1 = %f\n", STEPPER2_VS_1);
+//                        printf("posKpStepper1 = %f\n", posKpStepper1);
+//                        printf("targetTen[1] = %f\n", targetTen[1]);
+//                        printf("tensionLL = %f\n", (double)tensionLL);
+//                        printf("integralBias[1] = %f\n", integralBias[1]);
+//                        printf("差值 (targetTen[1] - tensionLL) = %f\n", targetTen[1] - (double)tensionLL);
+//                        printf("绝对差值 fabs(targetTen[1] - tensionLL) = %f\n", fabs(targetTen[1] - (double)tensionLL));
+//                        printf("lastBias = %f\n", lastBias); // 若与 STEPPER1 共享同一 lastBias
+//                        printf("----- 结束 STEPPER2_Kp_SQ 参数打印 -----\n\n");
                         StepperSetSpeed(STEPPER2, -STEPPER2_MAX_PUL);
                         stepper1Speed = -STEPPER2_MAX_PUL;
                     } else if (STEPPER2_Kp > STEPPER2_MAX_PUL) {
@@ -1339,7 +1392,7 @@ if(aimbot_mode) {
 if(aimbot_mode) {
     // 在数据接收后的处理逻辑中：
     int not_detect_cont = 0;
-    for (int j = 0; j < AIMBOT_RX_BUF_LEN - 9; ++j) {
+    for (int j = 0; j < AIMBOT_RX_BUF_LEN - 10; ++j) {
         if (_rx_buf[j + 0] == 0xA5) {
             // 提取 yaw_error（大端转小端）
             uint8_t *yaw_ptr = &_rx_buf[j + 2];  // 原数据：0x90,0xA0,0x2A,0xC4（大端）

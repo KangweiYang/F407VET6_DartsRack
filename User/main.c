@@ -867,13 +867,13 @@ double stepper_Kp0[90] = {
 
         // 420-520二次曲线下降（80→40）
         60,56,46,45,44,39,37, 36,32, 30,            // 425-465
-        30,27,26,25,24,23,27,27,26,25,            // 475-515
+        30,27,26,25,24,23,22,21,20,19,            // 475-515
 
         // 520-580指数衰减（40→24）
-        29,28,27,29,28,27,26,25,24,23,            // 525-575
+        18,17,17,16,16,15,15,14,14,13,            // 525-575
 
         // 580-700对数保持（24）
-        19.5,19,18.5,18,17.5,17,16.5,16,15.5,15,            // 585-675
+        13,19,18.5,18,17.5,17,16.5,16,15.5,15,            // 585-675
         14.6,14.2,                                     // 685-695
 
         // 700-900反比例衰减（12→12）
@@ -890,18 +890,18 @@ double stepper_Kp1[90] = {
 
         // 170-420线性下降（170→120）
         150,110,140,158,166,150,146,142,138,134,  // 175-265
-        130,126,122,118,114,110,106,102, 65,54,    // 275-365
-        51,48,46,43,                              // 375-405
+        130,126,122,118,114,110,106,102,54,50,    // 275-365
+        48,45,42,39,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
-        60,56,46,45,44,39,37, 36,35, 34,            // 425-465
-        33,27,26,25,24,23,27,27,26,25,            // 475-515
+        60,56,46,45,44,39,37, 36,32, 30,            // 425-465
+        30,27,26,25,24,23,22,21,20,19,            // 475-515
 
         // 520-580指数衰减（40→24）
-        29,28,27,29,28,27,26,25,24,23,            // 525-575
+        18,17,17,16,16,15,15,14,14,13,            // 525-575
 
         // 580-700对数保持（24）
-        19.5,19,18.5,18,17.5,17,16.5,16,15.5,15,            // 585-675
+        13,19,18.5,18,17.5,17,16.5,16,15.5,15,            // 585-675
         14.6,14.2,                                     // 685-695
 
         // 700-900反比例衰减（12→12）
@@ -1225,6 +1225,7 @@ if(aimbot_mode) {
                 else if(((double) tension1 - targetTen[0]) > 3 * STEPPER_CHANGE_TO_SMALL_K || ((double) tension1 - targetTen[0]) < -3 * STEPPER_CHANGE_TO_SMALL_K) {
                     posKpStepper0 = STEPPER1BIGKP;
                     posKdStepper0 = STEPPER1BIGKD;
+                    printf("tension1 - targetTen[0]) > 3 * STEPPER_CHANGE_TO_SMALL_K");
                 }
                 if(targetTen[0] < STEPPER_NOR_SQ_TEN_THRESOLD) {
                     if (STEPPER1_Kp < -STEPPER1_MAX_PUL) {
@@ -1238,6 +1239,9 @@ if(aimbot_mode) {
                         stepper0Speed = STEPPER1_Kp;
                     }
                 } else {
+                    posKpStepper0 = stepper_Kp0[(int)targetTen[0] / 10];
+                    posKiStepper0 = stepper_Kp0[(int)targetTen[0] / 10] / KI_DIVIDE;
+                    posKdStepper0 = stepper_Kd[(int)targetTen[0] / 10];
                     if (STEPPER1_Kp_SQ < -STEPPER1_MAX_PUL) {
                         /*printf("----- STEPPER1_Kp_SQ 参数调试 -----\n");
                         printf("posKpStepper0 = %f\n", posKpStepper0);
@@ -1270,14 +1274,14 @@ if(aimbot_mode) {
                         printf("----- 结束 STEPPER1_Kp_SQ 参数打印 -----\n\n");
                         */
 
-                        double error = (double)tension1 - targetTen[0];
-                        double abs_error = fabs(error);
-                        double p_term = -posKpStepper0 * error * abs_error;
-                        double i_term = -posKiStepper0 * integralBias[0];
-                        double d_error = error - lastBias;
-                        double d_term = posKdStepper0 * d_error;
-                        printf("\ntension = %d, 最终计算结果 = P + I + D = %f + %f + %f = %f\n",
-                               tension1, p_term, i_term, d_term, STEPPER1_Kp_SQ);
+//                        double error = (double)tension1 - targetTen[0];
+//                        double abs_error = fabs(error);
+//                        double p_term = -posKpStepper0 * error * abs_error;
+//                        double i_term = -posKiStepper0 * integralBias[0];
+//                        double d_error = error - lastBias;
+//                        double d_term = posKdStepper0 * d_error;
+//                        printf("\ntension = %d, 最终计算结果 = P + I + D = %f + %f + %f = %f\n",
+//                               tension1, p_term, i_term, d_term, STEPPER1_Kp_SQ);
 
                         StepperSetSpeed(STEPPER1, -STEPPER1_MAX_PUL);
                         stepper0Speed = -STEPPER1_MAX_PUL;
@@ -1496,10 +1500,10 @@ if(aimbot_mode) {
                    HAL_GPIO_ReadPin(HALL_RIGHT_SW_GPIO_Port, HALL_RIGHT_SW_Pin));
 #endif
 #if TEN_INFO
-            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, Kp: %.1lf, %.1lf, Ki: %.1lf, %.1lf, Kd: %.1lf, %.1lf\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], posKpStepper0, posKpStepper1, posKiStepper0, posKiStepper1, posKdStepper0, posKdStepper1);
+            printf("\ncurYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, tarYawPul: %d, furYaw[0]=: %d, Kp: %.1lf, %.1lf, Ki: %.1lf, %.1lf, Kd: %.1lf, %.1lf\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed, targetYawPul, furTarYaw[0], posKpStepper0, posKpStepper1, posKiStepper0, posKiStepper1, posKdStepper0, posKdStepper1);
 //            printf("curYaw: %d/ curTen: R: %ld, L: %ld; stepper1speed: %d, stepper2speed: %d, Relay GPIO: %d\n", targetYawPul, tension1, tensionL, stepper0Speed, stepper1Speed,
 //                   HAL_GPIO_ReadPin(RELAY_CONTROL_GPIO_Port, RELAY_CONTROL_Pin));
-            printf("FSM: %d, contFromLastUart: %lld\n", FeedFSMState(), contFromLastUart);
+//            printf("FSM: %d, contFromLastUart: %lld\n", FeedFSMState(), contFromLastUart);
 #endif
 #if CAN_SHOOT_INFO
             printf("can_shoot_flag = %d, shootFlag = %d, furTarTen[%d - 1] = %d, game_progress = %d, dart_target = %d, dart_remaining_time = %d, lastDart_launch_opening_status = %d, dart_launch_opening_status = %d, stage_time = %d\n", canShootFlag, shootFlag, shootFlag, furTarTen[shootFlag - 1], game_progress, dart_target, dart_remaining_time, lastDart_launch_opening_status, dart_launch_opening_status, stage_remain_time);

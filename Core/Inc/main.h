@@ -126,7 +126,7 @@ void SystemClock_Config(void);
 #define USE_dart_launch_opening_status              1   //使用闸门状态数据（因为中部赛区的闸门数据是错的）
 #define START_TENSION_R   0//193//190
 #define START_TENSION_L   0//215//190
-#define TEN_ERROR_SHOOT_CONT_THRESOLD   5
+#define TEN_ERROR_SHOOT_CONT_THRESOLD   12
 
 //speaker
 #define START_SPEAK_1   HAL_GPIO_WritePin(SPEAKER_MUSIC1_GPIO_Port, SPEAKER_MUSIC1_Pin, GPIO_PIN_SET)
@@ -228,11 +228,11 @@ void SystemClock_Config(void);
 #define MOTOR_INFO  0
 #define ADC_DMA_INFO    0
 #define HALL_INFO   0
-#define TEN_INFO    0
+#define TEN_INFO    1
 #define TEN_ERROR_INFO  1
 #define TEN_ERROR_INFO_DELAY_MS 1000
 #define SHOOT_INFO  0
-#define CAN_SHOOT_INFO  1
+#define CAN_SHOOT_INFO  0
 #define TEN_LIGHT_INFO    1
 #define UART5_INFO  1
 #define UART5_HADDLE_INFO  1

@@ -378,6 +378,36 @@ extern double integralBias[2];
 #define TENSION1_DATA_ADDRESS    4
 #define TENSION2_DATA_ADDRESS    3
 
+#include <stdio.h>
+
+// 调试宏定义（带条件编译开关）
+#define DEBUG_ENABLED 1  // 1启用调试，0关闭
+
+#if DEBUG_ENABLED
+#define DEBUG_PRINT(fmt, ...) \
+        do { \
+            printf("[DEBUG] %s:%d | ", __FILE__, __LINE__); \
+            printf(fmt, ##__VA_ARGS__); \
+            printf("\n"); \
+        } while(0)
+#else
+#define DEBUG_PRINT(fmt, ...)
+#endif
+
+// 专用参数打印宏
+#define PRINT_PARAMS(prefix) \
+    do { \
+        DEBUG_PRINT("%s: posKpStepper0 = %f", prefix, posKpStepper0); \
+        DEBUG_PRINT("%s: tension1 = %f", prefix, (double)tension1); \
+        DEBUG_PRINT("%s: targetTen[0] = %f", prefix, targetTen[0]); \
+        DEBUG_PRINT("%s: integralBias[0] = %f", prefix, integralBias[0]); \
+        DEBUG_PRINT("%s: lastBias = %f", prefix, lastBias); \
+        DEBUG_PRINT("%s: STEPPER2_VS_1 = %f", prefix, STEPPER2_VS_1); \
+        DEBUG_PRINT("%s: posKiStepper1 = %f", prefix, posKiStepper1); \
+        DEBUG_PRINT("%s: tensionLL = %f", prefix, (double)tensionLL); \
+        DEBUG_PRINT("%s: posKdStepper1 = %f", prefix, posKdStepper1); \
+    } while(0)
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

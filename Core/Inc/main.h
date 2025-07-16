@@ -142,8 +142,8 @@ void SystemClock_Config(void);
 #define STEPPER3    &htim4, TIM_CHANNEL_1   //PD12
 //#define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
 #define STEPPER2_VS_1   1.9
-#define STILL_RATE  2
-#define STEPPER_CHANGE_TO_SMALL_K   14
+#define STILL_RATE  3
+#define STEPPER_CHANGE_TO_SMALL_K   20
 #define STEPPER1BIGKP 430
 #define STEPPER1BIGKD 150
 #define STEPPER2BIGKP STEPPER1BIGKP*STEPPER2_VS_1
@@ -270,7 +270,9 @@ void SystemClock_Config(void);
 //stepper1,2 dir
 
 #define STEPPER1_MAX_PUL  1900
+#define STEPPER1_MAX_PUL_H  1000
 #define STEPPER2_MAX_PUL  3700
+#define STEPPER2_MAX_PUL_H  2000
 #define STEPPER1_2_MIN_CHANGE   (1200 / 20)
 
 #define STEPPER1_2_DIR  -1

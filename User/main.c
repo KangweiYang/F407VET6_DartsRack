@@ -863,14 +863,14 @@ double stepper_Kp0[90] = {
         // 170-420线性下降（170→120）
         150,110,140,158,166,150,146,142,138,134,  // 175-265
         130,126,122,118,114,110,106,102,54,50,    // 275-365
-        48,45,42,39,                              // 375-405
+        48,45,30,29,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
-        60,56,46,45,44,39,37, 36,32, 30,            // 425-465
-        30,27,26,25,24,23,22,21,20,19,            // 475-515
+        29,27,25,23,21,19,17, 16,15, 14,            // 425-465
+        20, 20,20,19,18,17,17,16,16, 15,              // 475-515
 
         // 520-580指数衰减（40→24）
-        18,17,17,16,16,15,15,14,14,13,            // 525-575
+        15,14,14,13,13,12,12,11,11,11,            // 525-575
 
         // 580-700对数保持（24）
         13,19,18.5,18,17.5,17,16.5,16,15.5,15,            // 585-675
@@ -891,14 +891,14 @@ double stepper_Kp1[90] = {
         // 170-420线性下降（170→120）
         150,110,140,158,166,150,146,142,138,134,  // 175-265
         130,126,122,118,114,110,106,102,54,50,    // 275-365
-        48,45,42,39,                              // 375-405
+        48,45,30,29,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
-        60,56,46,45,44,39,37, 36,32, 30,            // 425-465
-        30,27,26,25,24,23,22,21,20,19,            // 475-515
+        27,25,23,22,20,19,17, 16,15, 14,            // 425-465
+        20, 20,20,19,18,17,17,16,16, 15,             // 475-515
 
         // 520-580指数衰减（40→24）
-        18,17,17,16,16,15,15,14,14,13,            // 525-575
+        15,14,14,13,13,12,12,11,11,11,               // 525-575
 
         // 580-700对数保持（24）
         13,19,18.5,18,17.5,17,16.5,16,15.5,15,            // 585-675
@@ -1239,58 +1239,29 @@ if(aimbot_mode) {
                         stepper0Speed = STEPPER1_Kp;
                     }
                 } else {
-                    posKpStepper0 = stepper_Kp0[(int)targetTen[0] / 10];
-                    posKiStepper0 = stepper_Kp0[(int)targetTen[0] / 10] / KI_DIVIDE;
-                    posKdStepper0 = stepper_Kd[(int)targetTen[0] / 10];
-                    if (STEPPER1_Kp_SQ < -STEPPER1_MAX_PUL) {
-                        /*printf("----- STEPPER1_Kp_SQ 参数调试 -----\n");
-                        printf("posKpStepper0 = %f\n", posKpStepper0);
-                        printf("tension1 = %f\n", (double)tension1);
-                        printf("targetTen[0] = %f\n", targetTen[0]);
-                        printf("integralBias[0] = %f\n", integralBias[0]);
-                        printf("lastBias = %f\n", lastBias);
+                    if(targetTen[0] < 500) {
+                        if (STEPPER1_Kp_SQ < -STEPPER1_MAX_PUL) {
+                            StepperSetSpeed(STEPPER1, -STEPPER1_MAX_PUL);
+                            stepper0Speed = -STEPPER1_MAX_PUL;
+                        } else if (STEPPER1_Kp_SQ > STEPPER1_MAX_PUL) {
+                            StepperSetSpeed(STEPPER1, STEPPER1_MAX_PUL);
+                            stepper0Speed = STEPPER1_MAX_PUL;
+                        } else {
+                            StepperSetSpeed(STEPPER1, STEPPER1_Kp_SQ);
+                            stepper0Speed = STEPPER1_Kp_SQ;
+                        }
+                    } else if(targetTen[0] < 700){
 
-// 计算各个部分的值
-                        double error = (double)tension1 - targetTen[0];
-                        double abs_error = fabs(error);
-                        double p_term = -posKpStepper0 * error * abs_error;
-                        double i_term = -posKiStepper0 * integralBias[0];
-                        double d_error = error - lastBias;
-                        double d_term = posKdStepper0 * d_error;
-
-// 打印详细计算结果
-                        printf("\n详细计算步骤:\n");
-                        printf("误差 (tension1 - targetTen[0]) = %f\n", error);
-                        printf("绝对误差 = %f\n", abs_error);
-                        printf("\nP项: -Kp * 误差 * |误差| = -%.2f * %.2f * %.2f = %f\n",
-                               posKpStepper0, error, abs_error, p_term);
-                        printf("I项: -Ki * 积分偏差 = -%.2f * %.2f = %f\n",
-                               posKiStepper0, integralBias[0], i_term);
-                        printf("D项: Kd * (误差 - 上一偏差) = %.2f * (%.2f - %.2f) = %.2f * %.2f = %f\n",
-                               posKdStepper0, error, lastBias, posKdStepper0, d_error, d_term);
-                        printf("\n最终计算结果 = P + I + D = %f + %f + %f = %f\n",
-                               p_term, i_term, d_term, STEPPER1_Kp_SQ);
-
-                        printf("----- 结束 STEPPER1_Kp_SQ 参数打印 -----\n\n");
-                        */
-
-//                        double error = (double)tension1 - targetTen[0];
-//                        double abs_error = fabs(error);
-//                        double p_term = -posKpStepper0 * error * abs_error;
-//                        double i_term = -posKiStepper0 * integralBias[0];
-//                        double d_error = error - lastBias;
-//                        double d_term = posKdStepper0 * d_error;
-//                        printf("\ntension = %d, 最终计算结果 = P + I + D = %f + %f + %f = %f\n",
-//                               tension1, p_term, i_term, d_term, STEPPER1_Kp_SQ);
-
-                        StepperSetSpeed(STEPPER1, -STEPPER1_MAX_PUL);
-                        stepper0Speed = -STEPPER1_MAX_PUL;
-                    } else if (STEPPER1_Kp_SQ > STEPPER1_MAX_PUL) {
-                        StepperSetSpeed(STEPPER1, STEPPER1_MAX_PUL);
-                        stepper0Speed = STEPPER1_MAX_PUL;
-                    } else {
-                        StepperSetSpeed(STEPPER1, STEPPER1_Kp_SQ);
-                        stepper0Speed = STEPPER1_Kp_SQ;
+                        if (STEPPER1_Kp_SQ < -STEPPER1_MAX_PUL_H) {
+                            StepperSetSpeed(STEPPER1, -STEPPER1_MAX_PUL_H);
+                            stepper0Speed = -STEPPER1_MAX_PUL_H;
+                        } else if (STEPPER1_Kp_SQ > STEPPER1_MAX_PUL_H) {
+                            StepperSetSpeed(STEPPER1, STEPPER1_MAX_PUL_H);
+                            stepper0Speed = STEPPER1_MAX_PUL_H;
+                        } else {
+                            StepperSetSpeed(STEPPER1, STEPPER1_Kp_SQ);
+                            stepper0Speed = STEPPER1_Kp_SQ;
+                        }
                     }
                 }
                 lastBias = (double) tension1 - targetTen[0];
@@ -1357,15 +1328,29 @@ if(aimbot_mode) {
                         stepper1Speed = STEPPER2_Kp;
                     }
                 } else {
-                    if (STEPPER2_Kp_SQ < -STEPPER2_MAX_PUL) {
-                        StepperSetSpeed(STEPPER2, -STEPPER2_MAX_PUL);
-                        stepper1Speed = -STEPPER2_MAX_PUL;
-                    } else if (STEPPER2_Kp_SQ > STEPPER2_MAX_PUL) {
-                        StepperSetSpeed(STEPPER2, STEPPER2_MAX_PUL);
-                        stepper1Speed = STEPPER2_MAX_PUL;
-                    } else {
-                        StepperSetSpeed(STEPPER2, STEPPER2_Kp_SQ);
-                        stepper1Speed = STEPPER2_Kp_SQ;
+                    if(targetTen[0] < 500) {
+                        if (STEPPER2_Kp_SQ < -STEPPER2_MAX_PUL) {
+                            StepperSetSpeed(STEPPER2, -STEPPER2_MAX_PUL);
+                            stepper1Speed = -STEPPER2_MAX_PUL;
+                        } else if (STEPPER2_Kp_SQ > STEPPER2_MAX_PUL) {
+                            StepperSetSpeed(STEPPER2, STEPPER2_MAX_PUL);
+                            stepper1Speed = STEPPER2_MAX_PUL;
+                        } else {
+                            StepperSetSpeed(STEPPER2, STEPPER2_Kp_SQ);
+                            stepper1Speed = STEPPER2_Kp_SQ;
+                        }
+                    } else if(targetTen[0] < 700){
+
+                        if (STEPPER2_Kp_SQ < -STEPPER2_MAX_PUL_H) {
+                            StepperSetSpeed(STEPPER2, -STEPPER2_MAX_PUL_H);
+                            stepper1Speed = -STEPPER2_MAX_PUL_H;
+                        } else if (STEPPER2_Kp_SQ > STEPPER2_MAX_PUL_H) {
+                            StepperSetSpeed(STEPPER2, STEPPER2_MAX_PUL_H);
+                            stepper1Speed = STEPPER2_MAX_PUL_H;
+                        } else {
+                            StepperSetSpeed(STEPPER2, STEPPER2_Kp_SQ);
+                            stepper1Speed = STEPPER2_Kp_SQ;
+                        }
                     }
                 }
 //                lastBias = (double) tensionL - targetTen[1];

@@ -1225,7 +1225,6 @@ if(aimbot_mode) {
                 else if(((double) tension1 - targetTen[0]) > 3 * STEPPER_CHANGE_TO_SMALL_K || ((double) tension1 - targetTen[0]) < -3 * STEPPER_CHANGE_TO_SMALL_K) {
                     posKpStepper0 = STEPPER1BIGKP;
                     posKdStepper0 = STEPPER1BIGKD;
-                    printf("tension1 - targetTen[0]) > 3 * STEPPER_CHANGE_TO_SMALL_K");
                 }
                 if(targetTen[0] < STEPPER_NOR_SQ_TEN_THRESOLD) {
                     if (STEPPER1_Kp < -STEPPER1_MAX_PUL) {

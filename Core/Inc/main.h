@@ -228,11 +228,11 @@ void SystemClock_Config(void);
 #define MOTOR_INFO  0
 #define ADC_DMA_INFO    0
 #define HALL_INFO   0
-#define TEN_INFO    1
+#define TEN_INFO    0
 #define TEN_ERROR_INFO  1
 #define TEN_ERROR_INFO_DELAY_MS 1000
 #define SHOOT_INFO  0
-#define CAN_SHOOT_INFO  0
+#define CAN_SHOOT_INFO  1
 #define TEN_LIGHT_INFO    1
 #define UART5_INFO  1
 #define UART5_HADDLE_INFO  1

@@ -126,7 +126,7 @@ void SystemClock_Config(void);
 #define USE_dart_launch_opening_status              1   //使用闸门状态数据（因为中部赛区的闸门数据是错的）
 #define START_TENSION_R   0//193//190
 #define START_TENSION_L   0//215//190
-#define TEN_ERROR_SHOOT_CONT_THRESOLD   12
+#define TEN_ERROR_SHOOT_CONT_THRESOLD   5
 
 //speaker
 #define START_SPEAK_1   HAL_GPIO_WritePin(SPEAKER_MUSIC1_GPIO_Port, SPEAKER_MUSIC1_Pin, GPIO_PIN_SET)
@@ -143,6 +143,7 @@ void SystemClock_Config(void);
 //#define STEPPER4    &htim9, TIM_CHANNEL_1   //PE5
 #define STEPPER2_VS_1   1.9
 #define STILL_RATE  3
+#define STILL_RATE_THRE 430
 #define STEPPER_CHANGE_TO_SMALL_K   20
 #define STEPPER1BIGKP 430
 #define STEPPER1BIGKD 150
@@ -203,7 +204,7 @@ void SystemClock_Config(void);
 #define SERVO_LEFT_RIGHT_MIDDLE     ((SERVO_LEFT_RIGHT_LEFT + SERVO_LEFT_RIGHT_RIGHT)/2) //40
 
 //FEED
-#define TEST_SHOOT_TO_TEST_FEED          1
+#define TEST_SHOOT_TO_TEST_FEED          3
 #define DELAY_AFTER_TO_NEXT_DART         500  // After ServoUpDown_DownToGrasp    //ms
 #define DELAY_AFTER_DOWN_TO_GRASP        400  // After ServoUpDown_DownToGrasp    //ms
 #define DELAY_AFTER_GRASP_DART           200  // After ServoGrasp_GraspNextDart
@@ -232,11 +233,12 @@ void SystemClock_Config(void);
 #define TEN_ERROR_INFO  1
 #define TEN_ERROR_INFO_DELAY_MS 1000
 #define SHOOT_INFO  0
-#define CAN_SHOOT_INFO  1
+#define CAN_SHOOT_INFO  0
 #define TEN_LIGHT_INFO    1
 #define UART5_INFO  1
 #define UART5_HADDLE_INFO  1
-#define AIMBOT_INFO 0
+#define AIMBOT_INFO 1
+#define AIMBOT_PID_DEBUG_INFO 0
 #define STEPPER_INFO    0
 #define RS485_INFO  0
 #define RS485_LIGHT_INFO    0
@@ -358,19 +360,20 @@ extern double integralBias[2];
 #define AIMBOT_RX_BUF_LEN   18
 #define AIMBOT_DEBUG    0
 #define AIMBOT_SET_STEPPER3_ZERO_THRESOLD   300     //多少次丢目标后就停止yaw
-#define AIMBOT_KP   0.0004//0.09
-#define AIMBOT_KI   0.00009
-#define AIMBOT_KD   0.012//0.0
+//#define AIMBOT_KP   0.0008//0.09
+#define AIMBOT_KP   0.000003//0.09
+#define AIMBOT_KI   0.00013
+#define AIMBOT_KD   0.0012//0.0
 #define AIMBOT_SET_ZERO     4
 #define AIMBOT_MAX_SPEED    700
 //#define AIMBOT_PID  (AIMBOT_KP * ((float )yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float ) yaw_error - targetYawPul - lastYawError))
-#define AIMBOT_PID  (AIMBOT_KP * ((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float)yaw_error - targetYawPul - lastYawError))
+#define AIMBOT_PID  (AIMBOT_KP * ((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul)+ AIMBOT_KI * integralYawError - AIMBOT_KD * ((float)yaw_error - targetYawPul - lastYawError))
 //#define AIMBOT_PID  (AIMBOT_KP * ((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) * fabsf((float)yaw_error - targetYawPul) + AIMBOT_KI * integralYawError - AIMBOT_KD * ((float)yaw_error - targetYawPul - lastYawError))
 #define AIMBOT_CONTROL_DELAY    5000
 #define SHOOT_YAW_THRESOLD 15
 #define INTEGRAL_YAW_START_BIAS 200
 #define INTEGRAL_YAW_BIAS_SUB   0
-#define INTEGRAL_YAW_MAX        0//100000
+#define INTEGRAL_YAW_MAX        100000//100000
 #define INTEGRAL_YAW_SET_ZERO       8
 #define INTEGRAL_SET_ZERO       0
 

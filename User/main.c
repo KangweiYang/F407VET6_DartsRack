@@ -862,8 +862,8 @@ double stepper_Kp0[90] = {
 
         // 170-420线性下降（170→120）
         150,110,140,158,166,150,146,142,138,134,  // 175-265
-        130,126,122,118,114,110,106,102,54,50,    // 275-365
-        48,45,30,29,                              // 375-405
+        57,54,52,49,47,44,42,28,28,28,    // 275-365
+        34,32,30,29,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
         29,27,25,23,21,19,17, 16,15, 14,            // 425-465
@@ -890,8 +890,8 @@ double stepper_Kp1[90] = {
 
         // 170-420线性下降（170→120）
         150,110,140,158,166,150,146,142,138,134,  // 175-265
-        130,126,122,118,114,110,106,102,54,50,    // 275-365
-        48,45,30,29,                              // 375-405
+        57,54,52,49,47,44,42,40,38,36,    // 275-365
+        34,32,30,29,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
         27,25,23,22,20,19,17, 16,15, 14,            // 425-465
@@ -919,7 +919,7 @@ double stepper_Ki[90] = {
 
         // 170-420线性下降（170→120）
         150,150,140,158,154,140,136,132,128,124,  // 175-265
-        120,116,112,108,104,101,98,95,92,84,    // 275-365
+        74,70,66,63,60,57,55,53,50,49,    // 275-365
         70,66,62,58,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
@@ -1143,6 +1143,48 @@ if(aimbot_mode) {
         if ((yaw_error - targetYawPul) <= AIMBOT_SET_ZERO && (yaw_error - targetYawPul) >= -AIMBOT_SET_ZERO)
             StepperStop(STEPPER3);
         else {
+#if AIMBOT_PID_DEBUG_INFO
+// 在调用 AIMBOT_PID 宏的位置替换为以下代码块
+            float yaw_error_float = (float)yaw_error;  // 显式转换为 float
+
+// 1. 计算基础误差项
+            float error = yaw_error_float - targetYawPul;
+            float abs_error = fabsf(error);
+
+// 2. 计算比例项 (非线性部分)
+            float p_term = AIMBOT_KP * error * abs_error;
+
+// 3. 计算积分项
+            float i_term = AIMBOT_KI * integralYawError;
+
+// 4. 计算微分项
+            float d_error = error - lastYawError;
+            float d_term = AIMBOT_KD * d_error;
+
+// 5. 合成最终结果
+            float pid_output = p_term + i_term - d_term;
+
+// 6. 打印所有参数和中间结果
+            printf("\n----- AIMBOT_PID 详细计算过程 -----\n");
+            printf("[参数] yaw_error = %d -> float: %.6f\n", yaw_error, yaw_error_float);
+            printf("[参数] targetYawPul = %.6f\n", targetYawPul);
+            printf("[参数] integralYawError = %.6f\n", integralYawError);
+            printf("[参数] lastYawError = %.6f\n", lastYawError);
+            printf("[计算] 误差 error = %.6f - %.6f = %.6f\n",
+                   yaw_error_float, targetYawPul, error);
+            printf("[计算] 绝对误差 |error| = fabs(%.6f) = %.6f\n", error, abs_error);
+
+            printf("\n[比例项] KP * error * |error| = %.6f * %.6f * %.6f = %.6f\n",
+                   AIMBOT_KP, error, abs_error, p_term);
+            printf("[积分项] KI * integral = %.6f * %.6f = %.6f\n",
+                   AIMBOT_KI, integralYawError, i_term);
+            printf("[微分项] KD * (error - last) = %.6f * (%.6f - %.6f) = %.6f * %.6f = %.6f\n",
+                   AIMBOT_KD, error, lastYawError, AIMBOT_KD, d_error, d_term);
+
+            printf("\n[最终输出] P + I - D = %.6f + %.6f - %.6f = %.6f\n",
+                   p_term, i_term, d_term, pid_output);
+            printf("----------------------------------\n");
+#endif
             if (AIMBOT_PID >= AIMBOT_MAX_SPEED) UART_TargetYawSpeed = AIMBOT_MAX_SPEED;
             else if (AIMBOT_PID <= -AIMBOT_MAX_SPEED) UART_TargetYawSpeed = -AIMBOT_MAX_SPEED;
             else UART_TargetYawSpeed = AIMBOT_PID;
@@ -1217,8 +1259,10 @@ if(aimbot_mode) {
                     posKdStepper0 = stepper_Kd[(int)targetTen[0] / 10];
                     if(targetTen[0] >= STEPPER_NOR_SQ_TEN_THRESOLD){
                         if((tension1 - targetTen[0]) == 1 || (tension1 - targetTen[0]) == -1){
-                            posKpStepper0 = STILL_RATE * posKpStepper0;
-                            posKdStepper0 = STILL_RATE * posKdStepper0;
+                            if(targetTen[0] > STILL_RATE_THRE) {
+                                posKpStepper0 = STILL_RATE * posKpStepper0;
+                                posKdStepper0 = STILL_RATE * posKdStepper0;
+                            }
                         }
                     }
                 }
@@ -1290,8 +1334,10 @@ if(aimbot_mode) {
                     posKdStepper1 = stepper_Kd[(int)targetTen[1] / 10];
                     if(targetTen[1] >= STEPPER_NOR_SQ_TEN_THRESOLD){
                         if((targetTen[1] - tensionLL) == 1 || (targetTen[1] - tensionLL) == -1){
-                            posKpStepper1 = STILL_RATE * posKpStepper1;
-                            posKdStepper1 = STILL_RATE * posKdStepper1;
+                            if(targetTen[0] > STILL_RATE_THRE) {
+                                posKpStepper1 = STILL_RATE * posKpStepper1;
+                                posKdStepper1 = STILL_RATE * posKdStepper1;
+                            }
                         }
                     }
                     if(targetTen[1] > 160 && targetTen[1] <= 170){
@@ -1380,7 +1426,7 @@ if(aimbot_mode) {
 if(aimbot_mode) {
     // 在数据接收后的处理逻辑中：
     int not_detect_cont = 0;
-    for (int j = 0; j < AIMBOT_RX_BUF_LEN - 10; ++j) {
+    for (int j = 0; j < AIMBOT_RX_BUF_LEN - 12; ++j) {
         if (_rx_buf[j + 0] == 0xA5) {
             // 提取 yaw_error（大端转小端）
             uint8_t *yaw_ptr = &_rx_buf[j + 2];  // 原数据：0x90,0xA0,0x2A,0xC4（大端）

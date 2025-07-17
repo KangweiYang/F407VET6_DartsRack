@@ -322,7 +322,7 @@ extern double integralBias[2];
 
 //shoot progress
 #define RESET_SPEED 700
-#define LOAD_SPEED  4500//3400
+#define LOAD_SPEED  4000//3400
 #define LOAD_DELAY  90//50//100
 #define LOAD_STILL_DELAY  300//50//100
 #define RELEASE_SPEED   -4600//-3000

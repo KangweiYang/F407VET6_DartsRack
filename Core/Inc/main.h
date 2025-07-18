@@ -362,7 +362,7 @@ extern double integralBias[2];
 #define AIMBOT_SET_STEPPER3_ZERO_THRESOLD   300     //多少次丢目标后就停止yaw
 //#define AIMBOT_KP   0.0008//0.09
 #define AIMBOT_KP   0.000003//0.09
-#define AIMBOT_KI   0.00013
+#define AIMBOT_KI   0.00005
 #define AIMBOT_KD   0.0012//0.0
 #define AIMBOT_SET_ZERO     4
 #define AIMBOT_MAX_SPEED    700
@@ -373,7 +373,7 @@ extern double integralBias[2];
 #define SHOOT_YAW_THRESOLD 15
 #define INTEGRAL_YAW_START_BIAS 200
 #define INTEGRAL_YAW_BIAS_SUB   0
-#define INTEGRAL_YAW_MAX        100000//100000
+#define INTEGRAL_YAW_MAX        10000//100000
 #define INTEGRAL_YAW_SET_ZERO       8
 #define INTEGRAL_SET_ZERO       0
 

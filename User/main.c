@@ -862,12 +862,12 @@ double stepper_Kp0[90] = {
 
         // 170-420线性下降（170→120）
         150,110,140,158,166,150,146,142,138,134,  // 175-265
-        57,54,52,49,47,45,43,28,28,28,    // 275-365
+        57,54,52,49,47,45,43,40,38,36,    // 275-365
         34,32,30,29,                              // 375-405
 
         // 420-520二次曲线下降（80→40）
         29,27,25,23,21,19,17, 16,15, 14,            // 425-465
-        20, 20,20,19,18,17,17,16,16, 15,              // 475-515
+        20, 20,20,19,18,18,18,17,16, 15,              // 475-515
 
         // 520-580指数衰减（40→24）
         15,14,14,13,13,12,12,11,11,11,            // 525-575
@@ -895,7 +895,7 @@ double stepper_Kp1[90] = {
 
         // 420-520二次曲线下降（80→40）
         27,25,23,22,20,19,17, 16,15, 14,            // 425-465
-        20, 20,20,19,18,17,17,16,16, 15,             // 475-515
+        20, 20,20,19,18,18,18,17,16, 15,             // 475-515
 
         // 520-580指数衰减（40→24）
         15,14,14,13,13,12,12,11,11,11,               // 525-575
@@ -1424,41 +1424,43 @@ if(aimbot_mode) {
         }
 
 if(aimbot_mode) {
-    // 在数据接收后的处理逻辑中：
     int not_detect_cont = 0;
-    for (int j = AIMBOT_RX_BUF_LEN - 1; j >= 0; --j) {
-        if (_rx_buf[j + 0] == 0xA5) {
-            // 提取 yaw_error（大端转小端）
-            uint8_t *yaw_ptr = &_rx_buf[j + 2];  // 原数据：0x90,0xA0,0x2A,0xC4（大端）
+// 遍历整个缓冲区（从0到12，因为帧头位置最大12：12+6=18, 所以j最大为12，以确保后面还有6个字节）
+    for (int j = 0; j <= 12; ++j) {
+        if (_rx_buf[j] == 0xA5) {
+            // 检查后续是否足够长度
+            if (j+6 >= 18) {
+                // 不足，跳过
+                continue;
+            }
+            // 提取 yaw_error（4字节，从j+2开始）
+            uint8_t *yaw_ptr = &_rx_buf[j+2];   // 指向yaw_error的第一个字节
 
-            // 手动反转字节序（大端 -> 小端）
+            // 反转字节序（大端转小端）
             union {
                 uint32_t u;
                 float f;
             } yaw_convert;
 
-            // 将反转后的字节按大端序组合成uint32
-            yaw_convert.u = (yaw_ptr[j + 3] << 24) |  // 原第4字节（0xC4）移到最高位
-                            (yaw_ptr[j + 2] << 16) |  // 原第3字节（0x2A）
-                            (yaw_ptr[j + 1] << 8) |  // 原第2字节（0xA0）
-                            yaw_ptr[j + 0];          // 原第1字节（0x90）在最低位
+            // 将大端表示的四个字节（yaw_ptr[0]~[3]）转为小端存储的uint32
+            yaw_convert.u = (uint32_t)yaw_ptr[3] << 24 |
+                            (uint32_t)yaw_ptr[2] << 16 |
+                            (uint32_t)yaw_ptr[1] <<  8 |
+                            (uint32_t)yaw_ptr[0];
+            yaw_error = yaw_convert.f;
 
-            yaw_error = yaw_convert.f;     // 通过联合体转为float
+            target_status = _rx_buf[j+6];   // 从帧头开始，偏移6个字节是target_status
 
-            // 打印调试信息
-//                printf("yaw_bytes: %02X %02X %02X %02X\n",
-//                       yaw_ptr[3], yaw_ptr[2], yaw_ptr[1], yaw_ptr[0]);
-//                printf("yaw_uint: %08lX\n", (uint32_t)yaw_convert.u);
-
-            // 提取 target_status
-            target_status = _rx_buf[j + 6];
-
+            // 打印
+//            printf("Found frame at position %d\n", j);
+//            printf("yaw_bytes: %02X %02X %02X %02X\n", yaw_ptr[0], yaw_ptr[1], yaw_ptr[2], yaw_ptr[3]);
+//            printf("yaw_uint: %08lX\n", (uint32_t)yaw_convert.u);
 //            printf("yaw_error = %f\n", yaw_error);
 //            printf("target_status = %d\n", target_status);
 
-            for (int i = 0; i < 18; ++i) {
-                _rx_buf[i] = '\0';
-            }
+            // 注意：这里我们只处理找到的第一个有效帧，然后跳出循环。也可以继续寻找下一个帧？
+            // 因为我们后面会清除整个缓冲区，所以找到一帧后我们就处理并跳出。
+            break;
         } else {
             not_detect_cont++;
 

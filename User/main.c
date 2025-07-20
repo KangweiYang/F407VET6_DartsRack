@@ -1830,18 +1830,18 @@ if(aimbot_mode) {
                     trig = 1;
 //                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_UP, 0);
 //                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_UP, 0);
-//                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_RESET, 0);
+                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_RESET, 0);
 //                    ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 0);
-                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_RIGHT, 0);
+//                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_RIGHT, 0);
                     printf("RESET TRIGGE, init grasp, SERVO_LEFT_RIGHT_RIGHT, SERVO_UP_DOWN_LEFT_UP, SERVO_UP_DOWN_RIGHT_UP\n");
                     servoTriggerCont = 0;
                 } else if(trig == 1){
                     trig = 0;
 //                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_DOWN, 0);
 //                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_DOWN, 0);
-//                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_SHOOT, 0);
+                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_SHOOT, 0);
 //                    ServoSet(SERVO_GRASP, SERVO_GRASP_GRASP, 0);
-                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_LEFT, 0);
+//                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_LEFT, 0);
                     printf("SHOT TRIGGE, grasp grasp, SERVO_LEFT_RIGHT_LEFT, SERVO_UP_DOWN_LEFT_DOWN, SERVO_UP_DOWN_RIGHT_DOWN\n");
                     servoTriggerCont = 0;
                 }

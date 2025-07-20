@@ -191,7 +191,7 @@ void SystemClock_Config(void);
 #define SERVO_PUTDOWN_DELAY 200    //2500//ms
 #define TEST_SERVO_TRIGGER  1
 #define SERVO_TRIGGER_INIT  45//80
-#define SERVO_TRIGGER_SHOOT 28//48
+#define SERVO_TRIGGER_SHOOT 25//48
 #define SERVO_TRIGGER_MIDDLE    45//80
 #define SERVO_TRIGGER_RESET 80//127
 #define SERVO_TRIGGER_MIDDLE_DELAY  9     //新扳机归中延时，*100ms

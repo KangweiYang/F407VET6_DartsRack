@@ -292,10 +292,10 @@ void ServoLR_ToNotEdge(int dartSerial) {
             ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE_LEFT, 0);
             break;
         case 3:
-            ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE_LEFT, 0);
+            ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE_RIGHT, 0);
             break;
         case 4:
-            ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE_RIGHT, 0);
+            ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_NOT_EDGE_LEFT, 0);
             break;
     }
 }

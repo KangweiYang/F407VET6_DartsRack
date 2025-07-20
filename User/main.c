@@ -855,13 +855,13 @@ int StrToInt(uint8_t *buf, int16_t startPointer, uint8_t endChar){
 double stepper_Kp0[90] = {
         // 0-160线性保持（0-160实际为430）
         430,430,430,430,430,430,430,430,430,430,  // 5-95
-        430,430,330,230,180,140,130,              // 105-155
+        430,430,330,280,250,230,190,              // 105-155
 
         // 160-170突变区
-        150,                                       // 165
+        180,                                       // 165
 
         // 170-420线性下降（170→120）
-        150,110,140,158,166,150,146,142,138,134,  // 175-265
+        170,110,140,158,166,150,146,142,138,134,  // 175-265
         57,54,52,49,47,45,43,40,38,36,    // 275-365
         34,32,30,29,                              // 375-405
 
@@ -883,10 +883,10 @@ double stepper_Kp0[90] = {
 double stepper_Kp1[90] = {
         // 0-160线性保持（0-160实际为430）
         430,430,430,430,430,430,430,430,430,430,  // 5-95
-        430,430,330,230,180,140,130,              // 105-155
+        430,430,330,280,250,230,190,              // 105-155
 
         // 160-170突变区
-        150,                                       // 165
+        180,                                       // 165
 
         // 170-420线性下降（170→120）
         150,110,140,158,166,150,146,142,138,134,  // 175-265
@@ -1828,20 +1828,20 @@ if(aimbot_mode) {
                 static int trig;
                 if(trig == 0){
                     trig = 1;
-                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_UP, 0);
-                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_UP, 0);
+//                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_UP, 0);
+//                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_UP, 0);
 //                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_RESET, 0);
 //                    ServoSet(SERVO_GRASP, SERVO_GRASP_RELEASE, 0);
-//                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_RIGHT, 0);
+                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_RIGHT, 0);
                     printf("RESET TRIGGE, init grasp, SERVO_LEFT_RIGHT_RIGHT, SERVO_UP_DOWN_LEFT_UP, SERVO_UP_DOWN_RIGHT_UP\n");
                     servoTriggerCont = 0;
                 } else if(trig == 1){
                     trig = 0;
-                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_DOWN, 0);
-                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_DOWN, 0);
+//                    ServoSet(SERVO_UP_DOWN_LEFT, SERVO_UP_DOWN_LEFT_DOWN, 0);
+//                    ServoSet(SERVO_UP_DOWN_RIGHT, SERVO_UP_DOWN_RIGHT_DOWN, 0);
 //                    ServoSet(SERVO_TRIGGER, SERVO_TRIGGER_SHOOT, 0);
 //                    ServoSet(SERVO_GRASP, SERVO_GRASP_GRASP, 0);
-//                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_LEFT, 0);
+                    ServoSet(SERVO_LEFT_RIGHT, SERVO_LEFT_RIGHT_LEFT, 0);
                     printf("SHOT TRIGGE, grasp grasp, SERVO_LEFT_RIGHT_LEFT, SERVO_UP_DOWN_LEFT_DOWN, SERVO_UP_DOWN_RIGHT_DOWN\n");
                     servoTriggerCont = 0;
                 }
